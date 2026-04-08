@@ -1,11 +1,11 @@
-from langgraph.graph import StateGraph, END
+from langgraph.graph import StateGraph, START, END
 from ...state import AgentState
 from ..supervisor.nodes import supervisor_node, respond_node
 from ..supervisor.edges import route_next
 from ..tools.assignment_maker import assignment_graph
 from ..tools.quiz_generator import quiz_graph
 from ..tools.summarizer import summarizer_graph
-from enums import ValidRoutesEnum
+from .enums import ValidRoutesEnum
 
 def build_supervisor_graph(checkpointer=None):
     builder=StateGraph(AgentState)
@@ -15,6 +15,8 @@ def build_supervisor_graph(checkpointer=None):
     builder.add_node("quiz_generator",   quiz_graph)
     builder.add_node("summarizer",       summarizer_graph)
     builder.add_node("respond", respond_node)
+
+    builder.add_edge(START, "supervisor")
 
     builder.add_conditional_edges(
         "supervisor",
@@ -32,4 +34,7 @@ def build_supervisor_graph(checkpointer=None):
     builder.add_edge("summarizer", END)
     builder.add_edge("respond", END)
 
-    return builder.compile(checkpointer=checkpointer)
+    return builder.compile(
+        checkpointer=checkpointer,
+        debug=True
+    )

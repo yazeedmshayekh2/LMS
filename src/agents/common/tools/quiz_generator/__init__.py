@@ -1,1 +1,1 @@
-from graph import quiz_graph
+from .graph import quiz_graph

@@ -1,2 +1,2 @@
-from prompts import SUMMARIZER_PROMPT
-from graph import summarizer_graph
+from .prompts import SUMMARIZER_PROMPT
+from .graph import summarizer_graph

@@ -3,7 +3,7 @@ from langchain_core.messages import SystemMessage
 from ....state import AgentState
 from ...llms import get_llm
 
-from prompts import SUMMARIZER_PROMPT
+from .prompts import SUMMARIZER_PROMPT
 
 def summarizer_node(state: AgentState):
 

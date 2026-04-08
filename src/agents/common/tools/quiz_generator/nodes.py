@@ -3,7 +3,7 @@ from langchain_core.messages import SystemMessage
 from ....state import AgentState
 from ...llms import get_llm
 
-from prompts import QUIZ_GENERATOR_PROMPT
+from .prompts import QUIZ_GENERATOR_PROMPT
 
 def quiz_generator_node(state: AgentState):
 

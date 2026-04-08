@@ -1,8 +1,8 @@
 import logging
 from functools import lru_cache
 from langchain_core.language_models import BaseChatModel
-from enums import LLMProvider
-from config import PROVIDER_DEFAULTS
+from .enums import LLMProvider
+from .config import PROVIDER_DEFAULTS
 
 def create_llm(
     provider: LLMProvider,
@@ -12,8 +12,8 @@ def create_llm(
 ) -> BaseChatModel:
     
     defaults    = PROVIDER_DEFAULTS[provider]
-    model       = model         | defaults["model"]
-    temperature = temperature   | defaults["temperature"]
+    model       = model         or  defaults["model"]
+    temperature = temperature   or  defaults["temperature"]
 
     match provider:
         case LLMProvider.GPT:

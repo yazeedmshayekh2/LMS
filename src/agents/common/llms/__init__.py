@@ -1,5 +1,5 @@
-from enums import LLMProvider
-from factory import create_llm
+from .enums import LLMProvider
+from .factory import create_llm
 
 def get_llm(
     provider: LLMProvider = LLMProvider.GPT,

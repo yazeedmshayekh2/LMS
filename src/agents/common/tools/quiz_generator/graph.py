@@ -8,6 +8,6 @@ def build_quiz_generator_graph():
     builder.add_node("run", quiz_generator_node)
     builder.set_entry_point("run")
     builder.add_edge("run", END)
-    return builder.compile()
+    return builder.compile(debug=True)
 
 quiz_graph = build_quiz_generator_graph()

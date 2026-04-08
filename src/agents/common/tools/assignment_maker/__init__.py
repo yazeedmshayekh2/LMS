@@ -1,1 +1,1 @@
-from graph import assignment_graph
+from .graph import assignment_graph

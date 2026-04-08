@@ -5,7 +5,7 @@ from langchain.tools import tool
 
 from ..tools import * # Import the general tools
 
-from prompts import SUPERVISOR_PROMPT # Import the prompts that must be used in the nodes
+from .prompts import SUPERVISOR_PROMPT # Import the prompts that must be used in the nodes
 
 @tool
 def route_to(tool_name: str) -> str:

@@ -8,6 +8,6 @@ def build_summarizer_graph():
     builder.add_node("run", summarizer_node)
     builder.set_entry_point("run")
     builder.add_edge("run", END)
-    return builder.compile()
+    return builder.compile(debug=True)
 
 summarizer_graph = build_summarizer_graph()

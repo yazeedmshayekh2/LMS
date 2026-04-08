@@ -3,7 +3,7 @@ from langchain_core.messages import SystemMessage
 from ....state import AgentState
 from ...llms import get_llm
 
-from prompts import ASSIGNMENT_MAKER_PROMPT
+from .prompts import ASSIGNMENT_MAKER_PROMPT
 
 def assignment_maker_node(state: AgentState) -> dict:
     llm = get_llm(provider=state['llm_provider'])
