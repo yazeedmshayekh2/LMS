@@ -1,0 +1,15 @@
+[project]
+name = "langgraph_test"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "langchain>=1.2.15",
+    "langchain-anthropic>=1.4.0",
+    "langchain-google-genai>=4.2.1",
+    "langchain-groq>=1.1.2",
+    "langchain-ollama>=1.1.0",
+    "langchain-openai>=1.1.12",
+    "langgraph>=1.1.6",
+]
