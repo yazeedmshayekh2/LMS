@@ -7,13 +7,16 @@ from ..tools.quiz_generator import quiz_graph
 from ..tools.summarizer import summarizer_graph
 from .enums import ValidRoutesEnum
 
+from langgraph.graph.state import CompiledStateGraph
+
+
 def build_supervisor_graph(checkpointer=None):
-    builder=StateGraph(AgentState)
+    builder = StateGraph(AgentState)
     builder.add_node("supervisor", supervisor_node)
 
     builder.add_node("assignment_maker", assignment_graph)
-    builder.add_node("quiz_generator",   quiz_graph)
-    builder.add_node("summarizer",       summarizer_graph)
+    builder.add_node("quiz_generator", quiz_graph)
+    builder.add_node("summarizer", summarizer_graph)
     builder.add_node("respond", respond_node)
 
     builder.add_edge(START, "supervisor")
@@ -25,8 +28,8 @@ def build_supervisor_graph(checkpointer=None):
             ValidRoutesEnum.ASSIGNMENTMAKER.value: "assignment_maker",
             ValidRoutesEnum.QUIZGENERATOR.value: "quiz_generator",
             ValidRoutesEnum.SUMMARIZER.value: "summarizer",
-            ValidRoutesEnum.RESPOND.value: "respond"
-        }
+            ValidRoutesEnum.RESPOND.value: "respond",
+        },
     )
 
     builder.add_edge("assignment_maker", END)
@@ -34,7 +37,27 @@ def build_supervisor_graph(checkpointer=None):
     builder.add_edge("summarizer", END)
     builder.add_edge("respond", END)
 
-    return builder.compile(
-        checkpointer=checkpointer,
-        debug=True
-    )
+    app = builder.compile(checkpointer=checkpointer, debug=True)
+
+    print_graph(app)
+
+    return app
+
+
+def print_graph(app: CompiledStateGraph):
+    import subprocess, sys
+
+    # Get the PNG bytes from LangGraph
+    png_bytes = app.get_graph().draw_mermaid_png()
+
+    # Save to file
+    with open("src/agents/graph.png", "wb") as f:
+        f.write(png_bytes)
+
+    # Auto-open the image
+    if sys.platform == "win32":
+        subprocess.run(["start", "graph.png"], shell=True)
+    elif sys.platform == "darwin":
+        subprocess.run(["open", "graph.png"])
+    else:  # Linux
+        subprocess.run(["xdg-open", "graph.png"])
