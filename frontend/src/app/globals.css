@@ -1,0 +1,216 @@
+@import "tailwindcss";
+
+/* Load the fonts */
+@import url("https://api.fontshare.com/v2/css?f[]=satoshi@400,500,700&f[]=cabinet-grotesk@400,500,700&display=swap");
+
+@theme {
+  /* Fonts */
+  --font-body: "Satoshi", "Inter", sans-serif;
+  --font-display: "Cabinet Grotesk", "Georgia", serif;
+
+  /* Spacing extras */
+  --spacing-18: 4.5rem;
+  --spacing-22: 5.5rem;
+
+  /* Radius */
+  --radius-sm: 0.375rem;
+  --radius-md: 0.5rem;
+  --radius-lg: 0.75rem;
+  --radius-xl: 1rem;
+
+  /* Shadows */
+  --shadow-sm: 0 1px 2px rgba(40, 37, 29, 0.06);
+  --shadow-md: 0 4px 12px rgba(40, 37, 29, 0.08);
+  --shadow-lg: 0 12px 32px rgba(40, 32, 29, 0.12);
+}
+
+/* =====================
+   LIGHT MODE (default)
+   ===================== */
+:root {
+  --color-bg: #f7f6f2;
+  --color-surface: #f9f8f5;
+  --color-surface-2: #fbfbf9;
+  --color-surface-offset: #f3f0ec;
+  --color-divider: #dcd9d5;
+  --color-border: #d4d1ca;
+
+  --color-text: #28251d;
+  --color-text-muted: #7a7974;
+  --color-text-faint: #bab9b4;
+  --color-text-inverse: #f9f8f4;
+
+  --color-primary: #01696f;
+  --color-primary-hover: #0c4e54;
+  --color-primary-active: #0f3638;
+  --color-primary-light: #cedcd8;
+
+  --color-error: #a12c7b;
+  --color-success: #437a22;
+  --color-warning: #964219;
+}
+
+/* =====================================================
+   Dark mode — system preference
+   Activates when OS is set to dark mode
+   :root:not([data-theme="light"]) means:
+   "apply dark only if user hasn't manually chosen light"
+   ===================================================== */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --color-bg: #171614;
+    --color-surface: #1c1b19;
+    --color-surface-2: #201f1d;
+    --color-surface-offset: #1d1c1a;
+    --color-divider: #262523;
+    --color-border: #393836;
+
+    --color-text: #cdccca;
+    --color-text-muted: #797876;
+    --color-text-faint: #5a5957;
+    --color-text-inverse: #2b2a28;
+
+    --color-primary: #4f98a3;
+    --color-primary-hover: #227f8b;
+    --color-primary-active: #1a626b;
+    --color-primary-light: #313b3b;
+
+    --color-error: #d163a7;
+    --color-success: #6daa45;
+    --color-warning: #bb653b;
+  }
+}
+
+/* Manual toggle — overrides system preference */
+[data-theme="dark"] {
+  --color-bg: #171614;
+  --color-surface: #1c1b19;
+  --color-surface-2: #201f1d;
+  --color-surface-offset: #1d1c1a;
+  --color-divider: #262523;
+  --color-border: #393836;
+
+  --color-text: #cdccca;
+  --color-text-muted: #797876;
+  --color-text-faint: #5a5957;
+  --color-text-inverse: #2b2a28;
+
+  --color-primary: #4f98a3;
+  --color-primary-hover: #227f8b;
+  --color-primary-active: #1a626b;
+  --color-primary-light: #313b3b;
+
+  --color-error: #d163a7;
+  --color-success: #6daa45;
+  --color-warning: #bb653b;
+}
+
+[data-theme="light"] {
+  --color-bg: #f7f6f2;
+  --color-surface: #f9f8f5;
+  --color-surface-2: #fbfbf9;
+  --color-surface-offset: #f3f0ec;
+  --color-divider: #dcd9d5;
+  --color-border: #d4d1ca;
+
+  --color-text: #28251d;
+  --color-text-muted: #7a7974;
+  --color-text-faint: #bab9b4;
+  --color-text-inverse: #f9f8f4;
+
+  --color-primary: #01696f;
+  --color-primary-hover: #0c4e54;
+  --color-primary-active: #0f3638;
+  --color-primary-light: #cedcd8;
+
+  --color-error: #a12c7b;
+  --color-success: #437a22;
+  --color-warning: #964219;
+}
+
+/* =====================================================
+   @layer base
+   Global element styles applied with lowest specificity
+   Can be overridden by any component style
+   ===================================================== */
+@layer base {
+  body {
+    background-color: var(--color-bg);
+    color: var(--color-text);
+    font-family: var(--font-body);
+    min-height: 100dvh; /* dvh = dynamic viewport height (handles mobile browser bars) */
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    font-family: var(--font-display);
+    line-height: 1.15;
+    text-wrap: balance; /* prevents awkward single-word last lines */
+  }
+
+  p {
+    text-wrap: pretty; /* smarter line breaks for paragraphs */
+  }
+
+  /* CSS Reset */
+  *,
+  *::before,
+  *::after {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+  }
+  img,
+  picture,
+  video,
+  svg {
+    display: block;
+    max-width: 100%;
+  }
+  input,
+  button,
+  textarea,
+  select {
+    font: inherit;
+    color: inherit;
+  }
+  button {
+    cursor: pointer;
+    background: none;
+    border: none;
+  }
+  ul,
+  ol {
+    list-style: none;
+  }
+
+  /* Accessibility — keyboard focus ring */
+  :focus-visible {
+    outline: 2px solid var(--color-primary);
+    outline-offset: 3px;
+    border-radius: var(--radius-sm);
+  }
+
+  /* Text Selection Highlight */
+  ::selection {
+    background: var(--color-primary-active);
+    color: var(--color-text);
+  }
+
+  /* Respect user's motion prefrences */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+}
