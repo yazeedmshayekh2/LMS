@@ -5,7 +5,10 @@ description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
+    "addict>=2.4.0",
+    "docling>=2.92.0",
     "dotenv>=0.9.9",
+    "einops>=0.8.2",
     "ipython>=9.12.0",
     "langchain>=1.2.15",
     "langchain-anthropic>=1.4.0",
@@ -15,4 +18,13 @@ dependencies = [
     "langchain-ollama>=1.1.0",
     "langchain-openai>=1.1.12",
     "langgraph>=1.1.6",
+    "matplotlib>=3.10.9",
+    "numpy>=2.4.4",
+    "opencv-python>=4.13.0.92",
+    "pdf2image>=1.17.0",
+    "pdfplumber>=0.11.9",
+    "pillow>=12.2.0",
+    "pymupdf>=1.27.2.3",
+    "pypdf>=6.10.2",
+    "pytesseract>=0.3.13",
 ]
