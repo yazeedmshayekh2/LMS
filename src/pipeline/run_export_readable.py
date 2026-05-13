@@ -1,16 +1,18 @@
-"""Export readable Markdown without per-chunk YAML frontmatter.
+"""Export readable Markdown with LLM postprocessing.
 
-Reads stage-3 section files and writes body-only copies under:
+Reads stage-3 section files and writes reader-friendly copies under:
   assets/normalized/readable/sections/
   assets/normalized/readable/document.md
 
 Run from repo root:
   uv run python src/pipeline/run_export_readable.py
+  uv run python src/pipeline/run_export_readable.py --provider gemini --model gemini-2.5-flash
 """
 
 from __future__ import annotations
 
 import argparse
+import logging
 import sys
 from pathlib import Path
 
@@ -19,15 +21,20 @@ if str(_SRC) not in sys.path:
     sys.path.insert(0, str(_SRC))
 
 from pipeline.ingestion.config import IngestionConfig
-from pipeline.ingestion.normalize.reader_export import (
-    export_readable_document,
-    export_readable_sections,
-)
+from pipeline.ingestion.normalize.readable_pipeline import run_readable_export
+
+
+def _load_dotenv() -> None:
+    try:
+        from dotenv import load_dotenv
+    except ImportError:
+        return
+    load_dotenv()
 
 
 def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        description="Export readable Markdown without chunk frontmatter.",
+        description="Export readable Markdown with LLM postprocessing.",
     )
     parser.add_argument(
         "--normalized-dir",
@@ -35,32 +42,40 @@ def _build_parser() -> argparse.ArgumentParser:
         default=None,
         help="Stage-3 normalized output directory.",
     )
+    parser.add_argument("--provider", default="gemini")
+    parser.add_argument("--model", default=None)
+    parser.add_argument("--dry-run", action="store_true")
     return parser
 
 
 def main(argv: list[str] | None = None) -> int:
+    _load_dotenv()
     args = _build_parser().parse_args(argv)
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(levelname)s %(message)s",
+        stream=sys.stderr,
+        force=True,
+    )
+
     pipeline_dir = Path(__file__).resolve().parent
     config = IngestionConfig.for_sample_book(pipeline_dir, max_pages=None)
     if args.normalized_dir is not None:
         config.normalized_output_dir = args.normalized_dir
 
-    sections_dir = config.normalized_sections_dir
-    if not sections_dir.is_dir():
-        print(f"Normalized sections not found: {sections_dir}", file=sys.stderr)
-        return 1
-
-    readable_sections_dir = config.normalized_markdown_dir / "readable" / "sections"
-    written = export_readable_sections(sections_dir, output_dir=readable_sections_dir)
-    document_path = export_readable_document(
-        sections_dir,
-        output_path=config.normalized_markdown_dir / "readable" / "document.md",
+    report = run_readable_export(
+        config,
+        provider_name=args.provider,
+        model=args.model,
+        dry_run=args.dry_run,
     )
 
-    print("Wrote readable Markdown without chunk frontmatter:")
-    print(f"  {document_path}")
-    for path in written:
+    print("Wrote readable Markdown:")
+    print(f"  {report.document_path}")
+    for path in report.section_paths:
         print(f"  {path}")
+    if report.dry_run:
+        print("Readable export ran in dry-run mode (no LLM postprocess).")
     return 0
 
 

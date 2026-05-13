@@ -3,6 +3,9 @@
 Stages (in order):
   preprocess -> extract -> normalize -> readable
 
+The readable stage strips chunk frontmatter and runs LLM postprocessing for
+book-order, human-readable Markdown.
+
 Add a new stage by registering it in pipeline.ingestion.runner.PIPELINE_STAGES.
 
 Run from repo root:

@@ -12,6 +12,7 @@ Run the textbook ingestion pipeline from the repo root.
 
 With no arguments, runs preprocess -> extract -> normalize -> readable on the
 first 10 pages of the sample PDF, skipping Docling, using Gemini Flash.
+The readable stage postprocesses normalized Markdown for book-order reading.
 
 Examples:
   ./run.sh
@@ -21,7 +22,7 @@ Examples:
   ./run.sh --from-stage extract --to-stage readable --max-pages 3
 
 All flags are forwarded to src/pipeline/run_pipeline.py.
-Set GOOGLE_API_KEY in .env for Gemini normalization.
+Set GOOGLE_API_KEY in .env for Gemini normalization and readable postprocess.
 EOF
 }
 

@@ -17,11 +17,6 @@ from pipeline.ingestion.normalize.llm import (
 )
 from pipeline.ingestion.normalize.models import NormalizedSection, NormalizeReport
 from pipeline.ingestion.normalize.prompts import build_system_prompt, build_user_prompt
-from pipeline.ingestion.normalize.reader_export import (
-    export_readable_document,
-    export_readable_sections,
-)
-from pipeline.ingestion.normalize.toc import build_outline
 from pipeline.ingestion.normalize.validate import load_reference_text, validate_normalized_markdown
 
 logger = logging.getLogger(__name__)
@@ -140,13 +135,6 @@ def run_normalization(
     document_path = config.normalized_markdown_dir / "document.md"
     document_path.write_text("\n\n".join(document_parts) + "\n", encoding="utf-8")
 
-    readable_sections_dir = config.normalized_markdown_dir / "readable" / "sections"
-    export_readable_sections(config.normalized_sections_dir, output_dir=readable_sections_dir)
-    readable_document_path = export_readable_document(
-        config.normalized_sections_dir,
-        output_path=config.normalized_markdown_dir / "readable" / "document.md",
-    )
-
     qc_report_path = config.normalized_markdown_dir / "qc_report.json"
     qc_payload = {
         "written_at": datetime.now(timezone.utc).isoformat(),
@@ -163,7 +151,7 @@ def run_normalization(
     notes = [
         "Schema-first normalization with TOC outline context.",
         "QC tracks frontmatter completeness, heading depth, and approximate CER vs PyMuPDF reference.",
-        f"Readable body-only export: {readable_document_path}",
+        "Run the readable stage for body-only LLM postprocessed export.",
     ]
     if use_dry_run:
         notes.append("Dry-run mode wrote prompts and placeholder normalized sections.")

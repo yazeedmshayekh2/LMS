@@ -8,10 +8,7 @@ from pathlib import Path
 from pipeline.ingestion.config import IngestionConfig
 from pipeline.ingestion.extract.pipeline import run_extraction
 from pipeline.ingestion.normalize.pipeline import run_normalization
-from pipeline.ingestion.normalize.reader_export import (
-    export_readable_document,
-    export_readable_sections,
-)
+from pipeline.ingestion.normalize.readable_pipeline import run_readable_export
 from pipeline.ingestion.preprocess.pipeline import run_preprocessing
 
 logger = logging.getLogger(__name__)
@@ -91,21 +88,19 @@ def _stage_normalize(context: PipelineContext) -> StageResult:
 
 
 def _stage_readable(context: PipelineContext) -> StageResult:
-    sections_dir = context.config.normalized_sections_dir
-    if not sections_dir.is_dir():
-        raise FileNotFoundError(
-            f"Normalized sections not found: {sections_dir}. Run the normalize stage first."
-        )
-    readable_sections_dir = context.config.normalized_markdown_dir / "readable" / "sections"
-    written = export_readable_sections(sections_dir, output_dir=readable_sections_dir)
-    document_path = export_readable_document(
-        sections_dir,
-        output_path=context.config.normalized_markdown_dir / "readable" / "document.md",
+    report = run_readable_export(
+        context.config,
+        provider_name=context.provider,
+        model=context.model,
+        dry_run=context.dry_run,
     )
     return StageResult(
         stage="readable",
-        artifacts=[document_path, *written],
-        summary=f"exported {len(written)} readable section file(s)",
+        artifacts=[report.document_path, *report.section_paths],
+        summary=(
+            f"exported {report.section_count} readable section file(s)"
+            + (" (dry-run, no LLM postprocess)" if report.dry_run else "")
+        ),
     )
 
 
@@ -127,7 +122,7 @@ PIPELINE_STAGES: tuple[PipelineStage, ...] = (
     ),
     PipelineStage(
         name="readable",
-        description="Export body-only Markdown without chunk frontmatter.",
+        description="LLM postprocess for body-only readable Markdown.",
         run=_stage_readable,
     ),
 )
