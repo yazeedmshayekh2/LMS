@@ -9,6 +9,7 @@ from ai.llms.config import PROVIDER_DEFAULTS
 from pipeline.ingestion.config import IngestionConfig
 from pipeline.ingestion.extract.io import load_extract_report
 from pipeline.ingestion.normalize.batching import build_batches
+from pipeline.ingestion.normalize.toc import build_outline
 from pipeline.ingestion.normalize.llm import (
     create_normalizer_llm,
     normalize_batch_markdown,

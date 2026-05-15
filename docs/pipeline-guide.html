@@ -1,0 +1,1235 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>LMS Textbook Ingestion Pipeline</title>
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
+  <style>
+    :root {
+      --bg: #0f1419;
+      --surface: #1a2332;
+      --surface-2: #243044;
+      --border: #2d3a4f;
+      --text: #e7ecf3;
+      --muted: #8b9cb3;
+      --accent: #3b82f6;
+      --accent-soft: rgba(59, 130, 246, 0.15);
+      --preprocess: #22c55e;
+      --extract: #eab308;
+      --normalize: #a855f7;
+      --readable: #f97316;
+      --radius: 12px;
+      --nav-width: 260px;
+      --font: "Segoe UI", system-ui, -apple-system, sans-serif;
+      --mono: "Cascadia Code", "Consolas", monospace;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: var(--font);
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+      min-height: 100vh;
+    }
+
+    /* Layout */
+    .layout {
+      display: grid;
+      grid-template-columns: var(--nav-width) 1fr;
+      min-height: 100vh;
+    }
+
+    @media (max-width: 900px) {
+      .layout { grid-template-columns: 1fr; }
+      nav.sidebar {
+        position: relative;
+        height: auto;
+        border-right: none;
+        border-bottom: 1px solid var(--border);
+      }
+    }
+
+    nav.sidebar {
+      position: sticky;
+      top: 0;
+      height: 100vh;
+      overflow-y: auto;
+      background: var(--surface);
+      border-right: 1px solid var(--border);
+      padding: 1.25rem 0;
+    }
+
+    nav.sidebar .brand {
+      padding: 0 1.25rem 1rem;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 0.75rem;
+    }
+
+    nav.sidebar .brand h1 {
+      font-size: 1rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+    }
+
+    nav.sidebar .brand p {
+      font-size: 0.75rem;
+      color: var(--muted);
+      margin-top: 0.25rem;
+    }
+
+    nav.sidebar a {
+      display: block;
+      padding: 0.45rem 1.25rem;
+      color: var(--muted);
+      text-decoration: none;
+      font-size: 0.875rem;
+      border-left: 3px solid transparent;
+      transition: color 0.15s, background 0.15s, border-color 0.15s;
+    }
+
+    nav.sidebar a:hover,
+    nav.sidebar a.active {
+      color: var(--text);
+      background: var(--accent-soft);
+      border-left-color: var(--accent);
+    }
+
+    nav.sidebar .group-label {
+      font-size: 0.65rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--muted);
+      padding: 0.75rem 1.25rem 0.35rem;
+    }
+
+    main {
+      padding: 2rem 2.5rem 4rem;
+      max-width: 1100px;
+    }
+
+    @media (max-width: 600px) {
+      main { padding: 1.25rem; }
+    }
+
+    /* Hero */
+    .hero {
+      margin-bottom: 2.5rem;
+    }
+
+    .hero h2 {
+      font-size: 2rem;
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      line-height: 1.2;
+      margin-bottom: 0.75rem;
+    }
+
+    .hero p {
+      color: var(--muted);
+      font-size: 1.05rem;
+      max-width: 640px;
+    }
+
+    .hero-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      margin-top: 1.25rem;
+    }
+
+    .tag {
+      font-size: 0.75rem;
+      padding: 0.25rem 0.65rem;
+      border-radius: 999px;
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      color: var(--muted);
+    }
+
+    /* Search */
+    .search-wrap {
+      margin-bottom: 2rem;
+    }
+
+    .search-wrap input {
+      width: 100%;
+      max-width: 420px;
+      padding: 0.65rem 1rem 0.65rem 2.5rem;
+      border-radius: var(--radius);
+      border: 1px solid var(--border);
+      background: var(--surface);
+      color: var(--text);
+      font-size: 0.9rem;
+      outline: none;
+    }
+
+    .search-wrap input:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px var(--accent-soft);
+    }
+
+    .search-wrap {
+      position: relative;
+    }
+
+    .search-wrap::before {
+      content: "⌕";
+      position: absolute;
+      left: 0.85rem;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--muted);
+      font-size: 1rem;
+    }
+
+    /* Sections */
+    section {
+      margin-bottom: 3rem;
+      scroll-margin-top: 1.5rem;
+    }
+
+    section h3 {
+      font-size: 1.35rem;
+      font-weight: 700;
+      margin-bottom: 1rem;
+      padding-bottom: 0.5rem;
+      border-bottom: 1px solid var(--border);
+    }
+
+    section h4 {
+      font-size: 1rem;
+      font-weight: 600;
+      margin: 1.25rem 0 0.5rem;
+      color: var(--text);
+    }
+
+    p, ul { margin-bottom: 0.75rem; color: var(--muted); }
+    ul { padding-left: 1.25rem; }
+    li { margin-bottom: 0.35rem; }
+
+    /* Stage pipeline visual */
+    .stage-flow {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: stretch;
+      gap: 0;
+      margin: 1.5rem 0;
+    }
+
+    .stage-card {
+      flex: 1 1 180px;
+      min-width: 160px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.25rem;
+      cursor: pointer;
+      transition: transform 0.2s, box-shadow 0.2s, border-color 0.2s;
+      position: relative;
+    }
+
+    .stage-card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 24px rgba(0,0,0,0.35);
+    }
+
+    .stage-card.active {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 2px var(--accent-soft);
+    }
+
+    .stage-card .num {
+      font-size: 0.7rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      opacity: 0.8;
+    }
+
+    .stage-card h5 {
+      font-size: 1.1rem;
+      margin: 0.35rem 0;
+    }
+
+    .stage-card p {
+      font-size: 0.8rem;
+      margin: 0;
+      line-height: 1.4;
+    }
+
+    .stage-card .llm-badge {
+      display: inline-block;
+      margin-top: 0.65rem;
+      font-size: 0.65rem;
+      padding: 0.15rem 0.45rem;
+      border-radius: 4px;
+      background: var(--surface-2);
+    }
+
+    .stage-card[data-stage="preprocess"] { border-top: 3px solid var(--preprocess); }
+    .stage-card[data-stage="extract"] { border-top: 3px solid var(--extract); }
+    .stage-card[data-stage="normalize"] { border-top: 3px solid var(--normalize); }
+    .stage-card[data-stage="readable"] { border-top: 3px solid var(--readable); }
+
+    .stage-arrow {
+      display: flex;
+      align-items: center;
+      color: var(--muted);
+      font-size: 1.25rem;
+      padding: 0 0.25rem;
+      flex-shrink: 0;
+    }
+
+    @media (max-width: 700px) {
+      .stage-arrow { display: none; }
+    }
+
+    /* Detail panel */
+    .stage-detail {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.5rem;
+      margin-top: 1rem;
+      display: none;
+    }
+
+    .stage-detail.visible { display: block; animation: fadeIn 0.25s ease; }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(6px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .stage-detail .meta-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 0.75rem;
+      margin: 1rem 0;
+    }
+
+    .meta-item {
+      background: var(--surface-2);
+      border-radius: 8px;
+      padding: 0.75rem;
+      font-size: 0.8rem;
+    }
+
+    .meta-item strong {
+      display: block;
+      color: var(--text);
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 0.25rem;
+    }
+
+    /* Diagrams */
+    .diagram-box {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.5rem;
+      margin: 1rem 0;
+      overflow-x: auto;
+    }
+
+    .diagram-box .mermaid {
+      display: flex;
+      justify-content: center;
+    }
+
+    /* Tables */
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.85rem;
+      margin: 1rem 0;
+    }
+
+    th, td {
+      text-align: left;
+      padding: 0.6rem 0.75rem;
+      border-bottom: 1px solid var(--border);
+    }
+
+    th {
+      color: var(--muted);
+      font-weight: 600;
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    tr:hover td { background: var(--surface-2); }
+
+    code {
+      font-family: var(--mono);
+      font-size: 0.8em;
+      background: var(--surface-2);
+      padding: 0.15em 0.4em;
+      border-radius: 4px;
+      color: #93c5fd;
+    }
+
+    pre {
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1rem;
+      overflow-x: auto;
+      font-family: var(--mono);
+      font-size: 0.78rem;
+      line-height: 1.5;
+      color: #cbd5e1;
+      margin: 0.75rem 0;
+    }
+
+    /* Call tree */
+    .call-tree {
+      list-style: none;
+      padding-left: 0;
+    }
+
+    .call-tree li {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+    }
+
+    .call-tree .node {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.35rem 0;
+      cursor: pointer;
+      user-select: none;
+      color: var(--text);
+      font-family: var(--mono);
+      font-size: 0.8rem;
+    }
+
+    .call-tree .node:hover { color: var(--accent); }
+
+    .call-tree .toggle {
+      width: 1rem;
+      text-align: center;
+      color: var(--muted);
+      flex-shrink: 0;
+    }
+
+    .call-tree .children {
+      padding-left: 1.25rem;
+      border-left: 1px dashed var(--border);
+      margin-left: 0.5rem;
+    }
+
+    .call-tree .children.collapsed { display: none; }
+
+    /* Tabs */
+    .tabs {
+      display: flex;
+      gap: 0.25rem;
+      margin-bottom: 1rem;
+      flex-wrap: wrap;
+    }
+
+    .tab-btn {
+      padding: 0.45rem 0.9rem;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      color: var(--muted);
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 0.8rem;
+      font-family: inherit;
+    }
+
+    .tab-btn.active {
+      background: var(--accent-soft);
+      border-color: var(--accent);
+      color: var(--text);
+    }
+
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; }
+
+    /* File tree */
+    .file-tree {
+      font-family: var(--mono);
+      font-size: 0.78rem;
+      line-height: 1.7;
+      color: var(--muted);
+    }
+
+    .file-tree .dir { color: #fbbf24; }
+    .file-tree .file { color: #86efac; }
+
+    /* Accordion */
+    details {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      margin-bottom: 0.5rem;
+    }
+
+    details summary {
+      padding: 0.85rem 1rem;
+      cursor: pointer;
+      font-weight: 600;
+      font-size: 0.9rem;
+      list-style: none;
+    }
+
+    details summary::-webkit-details-marker { display: none; }
+
+    details summary::before {
+      content: "▸ ";
+      color: var(--muted);
+    }
+
+    details[open] summary::before { content: "▾ "; }
+
+    details .inner {
+      padding: 0 1rem 1rem;
+      border-top: 1px solid var(--border);
+    }
+
+    .highlight-match {
+      outline: 2px solid var(--accent);
+      border-radius: 4px;
+    }
+
+    .cmd-box {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      background: var(--surface-2);
+      border-radius: 8px;
+      padding: 0.65rem 1rem;
+      margin: 0.5rem 0;
+      font-family: var(--mono);
+      font-size: 0.78rem;
+    }
+
+    .cmd-box button {
+      margin-left: auto;
+      padding: 0.3rem 0.6rem;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      color: var(--muted);
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 0.7rem;
+    }
+
+    .cmd-box button:hover { color: var(--text); border-color: var(--accent); }
+
+    footer {
+      margin-top: 3rem;
+      padding-top: 1.5rem;
+      border-top: 1px solid var(--border);
+      font-size: 0.8rem;
+      color: var(--muted);
+    }
+  </style>
+</head>
+<body>
+  <div class="layout">
+    <nav class="sidebar" aria-label="Table of contents">
+      <div class="brand">
+        <h1>LMS Pipeline</h1>
+        <p>Textbook PDF → Markdown</p>
+      </div>
+      <div class="group-label">Overview</div>
+      <a href="#overview">Introduction</a>
+      <a href="#flow">Pipeline flow</a>
+      <a href="#architecture">Architecture</a>
+      <div class="group-label">Stages</div>
+      <a href="#stages">All stages</a>
+      <a href="#preprocess">1 · Preprocess</a>
+      <a href="#extract">2 · Extract</a>
+      <a href="#normalize">3 · Normalize</a>
+      <a href="#readable">4 · Readable</a>
+      <div class="group-label">Reference</div>
+      <a href="#config">Configuration</a>
+      <a href="#models">Data models</a>
+      <a href="#backends">PDF backends</a>
+      <a href="#llm">LLM layer</a>
+      <a href="#artifacts">Artifacts</a>
+      <a href="#cli">CLI commands</a>
+      <a href="#calls">Call graphs</a>
+    </nav>
+
+    <main>
+      <header class="hero" id="overview">
+        <h2>Textbook PDF Ingestion Pipeline</h2>
+        <p>
+          Interactive guide to <code>src/pipeline/</code> — how Arabic science textbooks
+          become structured Markdown for LMS and RAG. Click a stage card below to explore details.
+        </p>
+        <div class="hero-tags">
+          <span class="tag">4 stages</span>
+          <span class="tag">PyMuPDF · pdfplumber · pypdf</span>
+          <span class="tag">LangChain LLM</span>
+          <span class="tag">Schema-first chunks</span>
+        </div>
+      </header>
+
+      <div class="search-wrap">
+        <input type="search" id="search" placeholder="Search functions, files, concepts…" aria-label="Search documentation" />
+      </div>
+
+      <section id="flow">
+        <h3>End-to-end flow</h3>
+        <p>One PDF enters; four stages produce preprocess profiles, raw markdown, normalized chunks, and human-readable export.</p>
+        <div class="diagram-box">
+          <pre class="mermaid">
+flowchart LR
+  PDF["📄 Source PDF"]
+  S1["① Preprocess"]
+  S2["② Extract"]
+  S3["③ Normalize"]
+  S4["④ Readable"]
+  A1[("assets/preprocess")]
+  A2[("assets/raw_markdown")]
+  A3[("assets/normalized")]
+  A4[("readable/")]
+
+  PDF --> S1 --> A1 --> S2 --> A2 --> S3 --> A3 --> S4 --> A4
+
+  style S1 fill:#166534,color:#fff
+  style S2 fill:#854d0e,color:#fff
+  style S3 fill:#6b21a8,color:#fff
+  style S4 fill:#9a3412,color:#fff
+          </pre>
+        </div>
+      </section>
+
+      <section id="architecture">
+        <h3>Architecture</h3>
+        <div class="diagram-box">
+          <pre class="mermaid">
+flowchart TB
+  subgraph CLI["Entry points"]
+    RP[run_pipeline.py]
+    R1[run_preprocess.py]
+    R2[run_extract.py]
+    R3[run_normalize.py]
+    R4[run_export_readable.py]
+  end
+
+  subgraph ORCH["Orchestrator"]
+    RUN[runner.run_pipeline]
+    CTX[PipelineContext]
+    STG[PIPELINE_STAGES]
+  end
+
+  subgraph CORE["ingestion/"]
+    PP[preprocess.pipeline]
+    EX[extract.pipeline]
+    NM[normalize.pipeline]
+    RD[readable_pipeline]
+  end
+
+  subgraph AI["src/ai/llms"]
+    FAC[factory.create_llm]
+  end
+
+  RP --> RUN
+  R1 --> PP
+  R2 --> EX
+  R3 --> NM
+  R4 --> RD
+  RUN --> CTX --> STG
+  STG --> PP & EX & NM & RD
+  NM --> FAC
+  RD --> FAC
+          </pre>
+        </div>
+      </section>
+
+      <section id="stages">
+        <h3>Pipeline stages</h3>
+        <p>Click a stage to see entry function, outputs, and key modules.</p>
+
+        <div class="stage-flow" role="tablist">
+          <article class="stage-card active" data-stage="preprocess" tabindex="0" role="tab" aria-selected="true">
+            <div class="num" style="color:var(--preprocess)">Stage 1</div>
+            <h5>Preprocess</h5>
+            <p>Profile pages, compare text backends, classify page type.</p>
+            <span class="llm-badge">No LLM</span>
+          </article>
+          <span class="stage-arrow" aria-hidden="true">→</span>
+          <article class="stage-card" data-stage="extract" tabindex="0" role="tab">
+            <div class="num" style="color:var(--extract)">Stage 2</div>
+            <h5>Extract</h5>
+            <p>Layout blocks, tables, bilingual terms, vision placeholders.</p>
+            <span class="llm-badge">No LLM</span>
+          </article>
+          <span class="stage-arrow" aria-hidden="true">→</span>
+          <article class="stage-card" data-stage="normalize" tabindex="0" role="tab">
+            <div class="num" style="color:var(--normalize)">Stage 3</div>
+            <h5>Normalize</h5>
+            <p>Schema-first cleanup with YAML frontmatter per chunk.</p>
+            <span class="llm-badge">LLM + QC</span>
+          </article>
+          <span class="stage-arrow" aria-hidden="true">→</span>
+          <article class="stage-card" data-stage="readable" tabindex="0" role="tab">
+            <div class="num" style="color:var(--readable)">Stage 4</div>
+            <h5>Readable</h5>
+            <p>Strip frontmatter; reorder for human reading.</p>
+            <span class="llm-badge">LLM optional</span>
+          </article>
+        </div>
+
+        <div id="detail-preprocess" class="stage-detail visible" data-detail="preprocess">
+          <h4 style="color:var(--preprocess)">Preprocess</h4>
+          <div class="meta-grid">
+            <div class="meta-item"><strong>Entry</strong><code>run_preprocessing(config)</code></div>
+            <div class="meta-item"><strong>Module</strong><code>ingestion/preprocess/pipeline.py</code></div>
+            <div class="meta-item"><strong>Runner</strong><code>_stage_preprocess</code></div>
+          </div>
+          <p>For each page: geometry → PyMuPDF structure → run pymupdf, pypdf, pdfplumber, structure backends → <code>classify_page</code> → recommend backends → write JSON + previews. Optional Docling markdown for the page range.</p>
+          <h4>Key outputs</h4>
+          <ul>
+            <li><code>assets/preprocess/pages/page_NNN.json</code> — full <code>PageProfile</code></li>
+            <li><code>assets/preprocess/backends/{name}/page_NNN.txt</code></li>
+            <li><code>preprocess_report.json</code>, <code>preprocess_summary.md</code></li>
+          </ul>
+        </div>
+
+        <div id="detail-extract" class="stage-detail" data-detail="extract">
+          <h4 style="color:var(--extract)">Extract</h4>
+          <div class="meta-grid">
+            <div class="meta-item"><strong>Entry</strong><code>run_extraction(config)</code></div>
+            <div class="meta-item"><strong>Module</strong><code>ingestion/extract/pipeline.py</code></div>
+            <div class="meta-item"><strong>Depends on</strong>Preprocess report (optional)</div>
+          </div>
+          <p>Loads page profiles via <code>resolve_page_profiles</code>. Per page: layout blocks → region classification → bilingual pairs → tables → vision placeholders → <code>render_raw_page_markdown</code>.</p>
+          <h4>Key outputs</h4>
+          <ul>
+            <li><code>raw_markdown/pages/page_NNN.md</code></li>
+            <li><code>raw_markdown/document.md</code></li>
+            <li><code>extract_report.json</code></li>
+          </ul>
+        </div>
+
+        <div id="detail-normalize" class="stage-detail" data-detail="normalize">
+          <h4 style="color:var(--normalize)">Normalize</h4>
+          <div class="meta-grid">
+            <div class="meta-item"><strong>Entry</strong><code>run_normalization(...)</code></div>
+            <div class="meta-item"><strong>Requires</strong><code>extract_report.json</code></div>
+            <div class="meta-item"><strong>Batch ID</strong><code>p001_003</code> format</div>
+          </div>
+          <p><code>build_outline</code> from TOC pages → <code>build_batches</code> → LLM with schema prompts → <code>validate_normalized_markdown</code> vs PyMuPDF reference → write sections + QC.</p>
+          <h4>Frontmatter fields</h4>
+          <p><code>book_title</code>, <code>grade</code>, <code>content_kind</code>, <code>chunk_id</code>, <code>page_start/end</code>, … — see schema guide in <code>normalize/schema.py</code>.</p>
+        </div>
+
+        <div id="detail-readable" class="stage-detail" data-detail="readable">
+          <h4 style="color:var(--readable)">Readable</h4>
+          <div class="meta-grid">
+            <div class="meta-item"><strong>Entry</strong><code>run_readable_export(...)</code></div>
+            <div class="meta-item"><strong>Module</strong><code>normalize/readable_pipeline.py</code></div>
+            <div class="meta-item"><strong>Requires</strong><code>normalized/sections/*.md</code></div>
+          </div>
+          <p>Strips YAML frontmatter, runs second LLM pass for reading order only (no new content), writes <code>readable/sections/</code> and concatenated <code>readable/document.md</code>.</p>
+        </div>
+      </section>
+
+      <section id="preprocess">
+        <h3>Stage 1 — Preprocess (deep dive)</h3>
+        <div class="diagram-box">
+          <pre class="mermaid">
+flowchart TD
+  A[run_preprocessing] --> B[ensure_output_dirs]
+  B --> C[_document_metadata]
+  C --> D{For each page}
+  D --> E[_profile_page]
+  E --> F[classify_page]
+  E --> G[_recommend_backends]
+  D --> H[write_page_profile + backend previews]
+  A --> I{include_docling?}
+  I -->|yes| J[extract_docling_markdown]
+  A --> K[preprocess_report.json]
+          </pre>
+        </div>
+        <details>
+          <summary>Page types (<code>PageType</code> enum)</summary>
+          <div class="inner">
+            <table>
+              <thead><tr><th>Value</th><th>Typical signals</th></tr></thead>
+              <tbody>
+                <tr><td><code>cover</code></td><td>Page 1, "العلوم", "كتاب الطالب"</td></tr>
+                <tr><td><code>legal</code></td><td>ISBN, HarperCollins, copyright</td></tr>
+                <tr><td><code>toc</code></td><td>قائمة المحتويات</td></tr>
+                <tr><td><code>preface</code></td><td>المقدمة, بسم الله</td></tr>
+                <tr><td><code>lesson</code></td><td>الدرس, نتاجات التعلم</td></tr>
+                <tr><td><code>inquiry</code></td><td>استقصاء, استكشاف</td></tr>
+                <tr><td><code>enrichment</code></td><td>الإثراء, التوسع</td></tr>
+                <tr><td><code>glossary</code></td><td>المصطلحات, مسرد</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </details>
+      </section>
+
+      <section id="extract">
+        <h3>Stage 2 — Extract (deep dive)</h3>
+        <div class="diagram-box">
+          <pre class="mermaid">
+flowchart LR
+  P[PageProfile] --> LB[layout blocks]
+  P --> TB[tables]
+  LB --> R[classify_block_region]
+  R --> B[bilingual pairs]
+  B --> M[render_raw_page_markdown]
+  TB --> M
+          </pre>
+        </div>
+        <table>
+          <thead><tr><th>Block region</th><th>How it's chosen</th></tr></thead>
+          <tbody>
+            <tr><td><code>front_matter</code></td><td>Cover, legal, TOC, preface pages</td></tr>
+            <tr><td><code>header</code> / <code>footer</code></td><td>Top 11% / bottom 10% of page height</td></tr>
+            <tr><td><code>sidebar</code></td><td>Right 54% on lesson-like pages</td></tr>
+            <tr><td><code>terms</code></td><td>Bilingual glossary blocks on lessons</td></tr>
+            <tr><td><code>main</code></td><td>Default body content</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section id="normalize">
+        <h3>Stage 3 — Normalize (deep dive)</h3>
+        <div class="diagram-box">
+          <pre class="mermaid">
+flowchart TD
+  E[load_extract_report] --> O[build_outline]
+  O --> B[build_batches]
+  B --> L{LLM or dry-run?}
+  L -->|LLM| N[normalize_batch_markdown]
+  L -->|dry| P[placeholder markdown]
+  N --> V[validate_normalized_markdown]
+  P --> V
+  V --> W[sections + qc_report.json]
+          </pre>
+        </div>
+        <h4>Batching rules</h4>
+        <ul>
+          <li><code>cover</code>, <code>legal</code>, <code>preface</code>, <code>toc</code> → one page per batch</li>
+          <li>Other types → group consecutive same-type pages up to <code>normalize_batch_size</code></li>
+        </ul>
+      </section>
+
+      <section id="readable">
+        <h3>Stage 4 — Readable (deep dive)</h3>
+        <p>Second LLM pass focused on layout and reading order — no YAML, no invented content. Dry-run writes prompts only and passes through stripped text.</p>
+      </section>
+
+      <section id="config">
+        <h3>Configuration — <code>IngestionConfig</code></h3>
+        <table>
+          <thead><tr><th>Field</th><th>Default</th><th>Purpose</th></tr></thead>
+          <tbody>
+            <tr><td><code>pdf_path</code></td><td>Sample book in pipeline/</td><td>Input PDF</td></tr>
+            <tr><td><code>output_dir</code></td><td>assets/preprocess</td><td>Stage 1 root</td></tr>
+            <tr><td><code>max_pages</code></td><td>10</td><td>Page cap (<code>null</code> = all)</td></tr>
+            <tr><td><code>include_docling</code></td><td>true</td><td>Docling in preprocess</td></tr>
+            <tr><td><code>extract_include_docling</code></td><td>false</td><td>Docling appendix in raw MD</td></tr>
+            <tr><td><code>normalize_batch_size</code></td><td>2</td><td>Pages per normalize batch</td></tr>
+            <tr><td><code>normalize_dry_run</code></td><td>false</td><td>Skip LLM in normalize</td></tr>
+          </tbody>
+        </table>
+        <h4>Derived paths</h4>
+        <pre>raw_markdown_dir      → assets/raw_markdown (sibling of preprocess)
+normalized_markdown_dir → assets/normalized
+extract_report_path     → raw_markdown/extract_report.json</pre>
+      </section>
+
+      <section id="models">
+        <h3>Data models</h3>
+        <div class="tabs" data-tabs="models">
+          <button class="tab-btn active" data-tab="preprocess-models">Preprocess</button>
+          <button class="tab-btn" data-tab="extract-models">Extract</button>
+          <button class="tab-btn" data-tab="normalize-models">Normalize</button>
+          <button class="tab-btn" data-tab="runner-models">Runner</button>
+        </div>
+        <div id="preprocess-models" class="tab-panel active" data-panel="models">
+          <table>
+            <thead><tr><th>Class</th><th>Role</th></tr></thead>
+            <tbody>
+              <tr><td><code>PageProfile</code></td><td>Per-page classification + backends + flags</td></tr>
+              <tr><td><code>BackendExtraction</code></td><td>One extractor's text + quality_score</td></tr>
+              <tr><td><code>PreprocessReport</code></td><td>Full stage-1 JSON report</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div id="extract-models" class="tab-panel" data-panel="models">
+          <table>
+            <thead><tr><th>Class</th><th>Role</th></tr></thead>
+            <tbody>
+              <tr><td><code>LayoutBlock</code></td><td>Region, bbox, lines, bilingual pairs</td></tr>
+              <tr><td><code>RawPageMarkdown</code></td><td>One page structured + rendered MD</td></tr>
+              <tr><td><code>ExtractReport</code></td><td>All pages + paths</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div id="normalize-models" class="tab-panel" data-panel="models">
+          <table>
+            <thead><tr><th>Class</th><th>Role</th></tr></thead>
+            <tbody>
+              <tr><td><code>BookOutline</code></td><td>TOC entries with unit/lesson numbers</td></tr>
+              <tr><td><code>NormalizeBatch</code></td><td>LLM input unit (pages + raw MD)</td></tr>
+              <tr><td><code>NormalizedSection</code></td><td>Output + validation result</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div id="runner-models" class="tab-panel" data-panel="models">
+          <table>
+            <thead><tr><th>Class</th><th>Role</th></tr></thead>
+            <tbody>
+              <tr><td><code>PipelineContext</code></td><td>config + provider + model + dry_run</td></tr>
+              <tr><td><code>PipelineStage</code></td><td>name, description, run callable</td></tr>
+              <tr><td><code>StageResult</code></td><td>Artifacts list + summary per stage</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section id="backends">
+        <h3>PDF backends</h3>
+        <table>
+          <thead><tr><th>Backend</th><th>Module</th><th>Used in</th></tr></thead>
+          <tbody>
+            <tr><td><strong>PyMuPDF</strong></td><td><code>backends/pymupdf.py</code></td><td>Preprocess (primary), extract layout, tables</td></tr>
+            <tr><td><strong>pypdf</strong></td><td><code>backends/pypdf.py</code></td><td>Preprocess benchmark</td></tr>
+            <tr><td><strong>pdfplumber</strong></td><td><code>backends/pdfplumber.py</code></td><td>Preprocess + table fallback (RTL caution)</td></tr>
+            <tr><td><strong>Docling</strong></td><td><code>backends/docling.py</code></td><td>Optional slow full-page markdown</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section id="llm">
+        <h3>LLM layer</h3>
+        <p>Stages 3–4 use <code>ai.llms.factory.create_llm</code> via <code>normalize/llm.py</code>. Auto dry-run when API keys are missing.</p>
+        <table>
+          <thead><tr><th>Provider</th><th>Default model</th><th>Environment</th></tr></thead>
+          <tbody>
+            <tr><td>gemini</td><td>gemini-2.5-flash</td><td>GOOGLE_API_KEY, GEMINI_API_KEY</td></tr>
+            <tr><td>gpt</td><td>gpt-5.4</td><td>OPENAI_API_KEY</td></tr>
+            <tr><td>claude</td><td>claude-sonnet-4-6</td><td>ANTHROPIC_API_KEY</td></tr>
+            <tr><td>groq</td><td>llama-3.3-70b-versatile</td><td>GROQ_API_KEY</td></tr>
+            <tr><td>ollama</td><td>llama3.2</td><td>OLLAMA_HOST (local)</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section id="artifacts">
+        <h3>Artifacts on disk</h3>
+        <pre class="file-tree"><span class="dir">src/pipeline/assets/</span>
+├── <span class="dir">preprocess/</span>
+│   ├── preprocess_report.json
+│   ├── preprocess_summary.md
+│   ├── <span class="dir">pages/</span>page_NNN.json
+│   └── <span class="dir">backends/</span>pymupdf|pypdf|pdfplumber|pymupdf_structure/
+├── <span class="dir">raw_markdown/</span>
+│   ├── extract_report.json
+│   ├── document.md
+│   └── <span class="dir">pages/</span>page_NNN.md
+└── <span class="dir">normalized/</span>
+    ├── document.md
+    ├── qc_report.json
+    ├── normalize_report.json
+    ├── <span class="dir">sections/</span>pNNN_MMM.md
+    └── <span class="dir">readable/</span>document.md + sections/</pre>
+      </section>
+
+      <section id="cli">
+        <h3>CLI commands</h3>
+        <p>Run from repository root with <code>uv</code>:</p>
+        <div class="cmd-box"><span>uv run python src/pipeline/run_pipeline.py --max-pages 10 --skip-docling</span><button type="button" data-copy>Copy</button></div>
+        <div class="cmd-box"><span>uv run python src/pipeline/run_pipeline.py --only normalize --provider gemini --batch-size 1</span><button type="button" data-copy>Copy</button></div>
+        <div class="cmd-box"><span>uv run python src/pipeline/run_pipeline.py --from-stage extract --to-stage readable</span><button type="button" data-copy>Copy</button></div>
+        <div class="cmd-box"><span>uv run python src/pipeline/run_pipeline.py --list-stages</span><button type="button" data-copy>Copy</button></div>
+      </section>
+
+      <section id="calls">
+        <h3>Call graphs</h3>
+        <p>Click a function to expand or collapse its children.</p>
+
+        <details open>
+          <summary>Preprocess — <code>run_preprocessing</code></summary>
+          <div class="inner">
+            <ul class="call-tree" id="tree-preprocess"></ul>
+          </div>
+        </details>
+
+        <details>
+          <summary>Extract — <code>run_extraction</code></summary>
+          <div class="inner">
+            <ul class="call-tree" id="tree-extract"></ul>
+          </div>
+        </details>
+
+        <details>
+          <summary>Normalize — <code>run_normalization</code></summary>
+          <div class="inner">
+            <ul class="call-tree" id="tree-normalize"></ul>
+          </div>
+        </details>
+
+        <details>
+          <summary>Readable — <code>run_readable_export</code></summary>
+          <div class="inner">
+            <ul class="call-tree" id="tree-readable"></ul>
+          </div>
+        </details>
+      </section>
+
+      <footer>
+        <p>LMS Pipeline Guide — generated for <code>src/pipeline/</code>. Open this file in any browser; diagrams use Mermaid.js from CDN.</p>
+        <p style="margin-top:0.5rem">Source: <code>docs/pipeline-guide.html</code></p>
+      </footer>
+    </main>
+  </div>
+
+  <script>
+    mermaid.initialize({
+      startOnLoad: true,
+      theme: "dark",
+      themeVariables: {
+        primaryColor: "#3b82f6",
+        primaryTextColor: "#e7ecf3",
+        primaryBorderColor: "#2d3a4f",
+        lineColor: "#8b9cb3",
+        secondaryColor: "#1a2332",
+        tertiaryColor: "#243044",
+        background: "#1a2332",
+        mainBkg: "#1a2332",
+        nodeBorder: "#2d3a4f",
+        clusterBkg: "#243044",
+        titleColor: "#e7ecf3",
+        edgeLabelBackground: "#1a2332",
+      },
+      flowchart: { curve: "basis", padding: 16 },
+    });
+
+    // Stage cards
+    const cards = document.querySelectorAll(".stage-card");
+    const details = document.querySelectorAll(".stage-detail");
+
+    function showStage(name) {
+      cards.forEach((c) => {
+        const active = c.dataset.stage === name;
+        c.classList.toggle("active", active);
+        c.setAttribute("aria-selected", active);
+      });
+      details.forEach((d) => d.classList.toggle("visible", d.dataset.detail === name));
+    }
+
+    cards.forEach((card) => {
+      card.addEventListener("click", () => showStage(card.dataset.stage));
+      card.addEventListener("keydown", (e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          showStage(card.dataset.stage);
+        }
+      });
+    });
+
+    // Tabs
+    document.querySelectorAll("[data-tabs]").forEach((group) => {
+      const id = group.dataset.tabs;
+      const buttons = group.querySelectorAll(".tab-btn");
+      const panels = document.querySelectorAll(`[data-panel="${id}"]`);
+      buttons.forEach((btn) => {
+        btn.addEventListener("click", () => {
+          buttons.forEach((b) => b.classList.remove("active"));
+          panels.forEach((p) => p.classList.remove("active"));
+          btn.classList.add("active");
+          document.getElementById(btn.dataset.tab)?.classList.add("active");
+        });
+      });
+    });
+
+    // Nav scroll spy
+    const navLinks = document.querySelectorAll("nav.sidebar a");
+    const sections = [...navLinks].map((a) => document.querySelector(a.getAttribute("href"))).filter(Boolean);
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            navLinks.forEach((link) => {
+              link.classList.toggle("active", link.getAttribute("href") === "#" + entry.target.id);
+            });
+          }
+        });
+      },
+      { rootMargin: "-20% 0px -70% 0px", threshold: 0 }
+    );
+    sections.forEach((s) => observer.observe(s));
+
+    // Search
+    const searchInput = document.getElementById("search");
+    const searchable = document.querySelectorAll("section, .stage-detail, details, table tr, .cmd-box");
+
+    searchInput.addEventListener("input", () => {
+      const q = searchInput.value.trim().toLowerCase();
+      document.querySelectorAll(".highlight-match").forEach((el) => el.classList.remove("highlight-match"));
+
+      if (!q) {
+        searchable.forEach((el) => (el.style.display = ""));
+        return;
+      }
+
+      searchable.forEach((el) => {
+        const text = el.textContent.toLowerCase();
+        const match = text.includes(q);
+        if (el.tagName === "TR") {
+          el.style.display = match ? "" : "none";
+        } else if (el.tagName === "SECTION" || el.tagName === "DETAILS") {
+          el.style.display = match ? "" : "none";
+          if (match) el.classList.add("highlight-match");
+        }
+      });
+    });
+
+    // Copy buttons
+    document.querySelectorAll("[data-copy]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const text = btn.parentElement.querySelector("span").textContent;
+        navigator.clipboard.writeText(text).then(() => {
+          btn.textContent = "Copied!";
+          setTimeout(() => (btn.textContent = "Copy"), 1500);
+        });
+      });
+    });
+
+    // Call trees
+    function buildTree(containerId, nodes) {
+      const ul = document.getElementById(containerId);
+      if (!ul) return;
+
+      function renderNode(node, depth = 0) {
+        const li = document.createElement("li");
+        const hasChildren = node.children && node.children.length;
+        const row = document.createElement("div");
+        row.className = "node";
+        row.innerHTML = `<span class="toggle">${hasChildren ? "▾" : "·"}</span><span>${node.name}</span>`;
+        li.appendChild(row);
+
+        if (hasChildren) {
+          const childUl = document.createElement("ul");
+          childUl.className = "children";
+          node.children.forEach((child) => childUl.appendChild(renderNode(child, depth + 1)));
+          li.appendChild(childUl);
+
+          row.addEventListener("click", () => {
+            const collapsed = childUl.classList.toggle("collapsed");
+            row.querySelector(".toggle").textContent = collapsed ? "▸" : "▾";
+          });
+        }
+        return li;
+      }
+
+      nodes.forEach((n) => ul.appendChild(renderNode(n)));
+    }
+
+    buildTree("tree-preprocess", [
+      {
+        name: "run_preprocessing(config)",
+        children: [
+          { name: "_document_metadata(pdf)" },
+          {
+            name: "loop: _profile_page(page)",
+            children: [
+              { name: "page_geometry" },
+              { name: "extract_pymupdf_structure" },
+              { name: "extract_pymupdf_page → _backend_extraction" },
+              { name: "extract_pypdf_page → _backend_extraction" },
+              { name: "extract_pdfplumber_page (+ RTL flags)" },
+              { name: "render_pymupdf_structure_text" },
+              { name: "classify_page" },
+              { name: "_recommend_backends" },
+            ],
+          },
+          { name: "write_page_profile / write_backend_preview" },
+          { name: "extract_docling_markdown (optional)" },
+          { name: "write_json_report + write_summary_markdown" },
+        ],
+      },
+    ]);
+
+    buildTree("tree-extract", [
+      {
+        name: "run_extraction(config)",
+        children: [
+          { name: "resolve_page_profiles → load_preprocess_report | _derive_page_profile" },
+          {
+            name: "loop: _extract_page(profile)",
+            children: [
+              { name: "extract_page_layout_blocks" },
+              { name: "extract_page_image_blocks" },
+              { name: "extract_page_tables" },
+              { name: "classify_block_region" },
+              { name: "extract_bilingual_pairs" },
+              { name: "build_vision_placeholders" },
+              { name: "render_raw_page_markdown" },
+            ],
+          },
+          { name: "extract_docling_markdown appendix (optional)" },
+          { name: "write extract_report.json" },
+        ],
+      },
+    ]);
+
+    buildTree("tree-normalize", [
+      {
+        name: "run_normalization(config, provider, model, dry_run)",
+        children: [
+          { name: "load_extract_report" },
+          { name: "build_outline(pages)" },
+          { name: "build_batches(pages, outline)" },
+          { name: "create_normalizer_llm → ai.llms.factory.create_llm" },
+          {
+            name: "loop: each batch",
+            children: [
+              { name: "build_system_prompt + build_user_prompt" },
+              { name: "normalize_batch_markdown (LLM) | _dry_run_markdown" },
+              { name: "load_reference_text (pymupdf preview)" },
+              { name: "validate_normalized_markdown" },
+              { name: "write sections/pNNN_MMM.md + qc_report.json" },
+            ],
+          },
+        ],
+      },
+    ]);
+
+    buildTree("tree-readable", [
+      {
+        name: "run_readable_export(config, provider, model, dry_run)",
+        children: [
+          { name: "_load_outline_context" },
+          { name: "create_normalizer_llm" },
+          {
+            name: "loop: normalized/sections/p*.md",
+            children: [
+              { name: "parse_batch_id" },
+              { name: "strip_chunk_frontmatter" },
+              { name: "postprocess_readable_markdown (LLM) | dry-run prompts" },
+            ],
+          },
+          { name: "export_readable_document → readable/document.md" },
+        ],
+      },
+    ]);
+  </script>
+</body>
+</html>
