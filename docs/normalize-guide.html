@@ -1,0 +1,1146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Normalize Stage — Full run_normalization Guide</title>
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
+  <style>
+    :root {
+      --bg: #0f1419;
+      --surface: #1a2332;
+      --surface-2: #243044;
+      --border: #2d3a4f;
+      --text: #e7ecf3;
+      --muted: #8b9cb3;
+      --accent: #3b82f6;
+      --accent-soft: rgba(59, 130, 246, 0.15);
+      --preprocess: #22c55e;
+      --extract: #eab308;
+      --normalize: #a855f7;
+      --readable: #f97316;
+      --radius: 12px;
+      --nav-width: 260px;
+      --font: "Segoe UI", system-ui, -apple-system, sans-serif;
+      --mono: "Cascadia Code", "Consolas", monospace;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: var(--font);
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+      min-height: 100vh;
+    }
+
+    .layout {
+      display: grid;
+      grid-template-columns: var(--nav-width) 1fr;
+      min-height: 100vh;
+    }
+
+    @media (max-width: 900px) {
+      .layout { grid-template-columns: 1fr; }
+      nav.sidebar {
+        position: relative;
+        height: auto;
+        border-right: none;
+        border-bottom: 1px solid var(--border);
+      }
+    }
+
+    nav.sidebar {
+      position: sticky;
+      top: 0;
+      height: 100vh;
+      overflow-y: auto;
+      background: var(--surface);
+      border-right: 1px solid var(--border);
+      padding: 1.25rem 0;
+    }
+
+    nav.sidebar .brand {
+      padding: 0 1.25rem 1rem;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 0.75rem;
+    }
+
+    nav.sidebar .brand h1 {
+      font-size: 1rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+    }
+
+    nav.sidebar .brand p {
+      font-size: 0.75rem;
+      color: var(--muted);
+      margin-top: 0.25rem;
+    }
+
+    nav.sidebar a {
+      display: block;
+      padding: 0.45rem 1.25rem;
+      color: var(--muted);
+      text-decoration: none;
+      font-size: 0.875rem;
+      border-left: 3px solid transparent;
+      transition: color 0.15s, background 0.15s, border-color 0.15s;
+    }
+
+    nav.sidebar a:hover,
+    nav.sidebar a.active {
+      color: var(--text);
+      background: var(--accent-soft);
+      border-left-color: var(--accent);
+    }
+
+    nav.sidebar .group-label {
+      font-size: 0.65rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--muted);
+      padding: 0.75rem 1.25rem 0.35rem;
+    }
+
+    main {
+      padding: 2rem 2.5rem 4rem;
+      max-width: 1100px;
+    }
+
+    @media (max-width: 600px) {
+      main { padding: 1.25rem; }
+    }
+
+    .hero { margin-bottom: 2.5rem; }
+
+    .hero h2 {
+      font-size: 2rem;
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      line-height: 1.2;
+      margin-bottom: 0.75rem;
+    }
+
+    .hero p {
+      color: var(--muted);
+      font-size: 1.05rem;
+      max-width: 720px;
+    }
+
+    .hero-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      margin-top: 1.25rem;
+    }
+
+    .tag {
+      font-size: 0.75rem;
+      padding: 0.25rem 0.65rem;
+      border-radius: 999px;
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      color: var(--muted);
+    }
+
+    .tag.purple { border-color: var(--normalize); color: #d8b4fe; }
+
+    .search-wrap {
+      margin-bottom: 2rem;
+      position: relative;
+    }
+
+    .search-wrap input {
+      width: 100%;
+      max-width: 420px;
+      padding: 0.65rem 1rem 0.65rem 2.5rem;
+      border-radius: var(--radius);
+      border: 1px solid var(--border);
+      background: var(--surface);
+      color: var(--text);
+      font-size: 0.9rem;
+      outline: none;
+    }
+
+    .search-wrap input:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px var(--accent-soft);
+    }
+
+    .search-wrap::before {
+      content: "⌕";
+      position: absolute;
+      left: 0.85rem;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--muted);
+      font-size: 1rem;
+    }
+
+    section {
+      margin-bottom: 3rem;
+      scroll-margin-top: 1.5rem;
+    }
+
+    section h3 {
+      font-size: 1.35rem;
+      font-weight: 700;
+      margin-bottom: 1rem;
+      padding-bottom: 0.5rem;
+      border-bottom: 1px solid var(--border);
+    }
+
+    section h4 {
+      font-size: 1rem;
+      font-weight: 600;
+      margin: 1.25rem 0 0.5rem;
+      color: var(--text);
+    }
+
+    p, ul { margin-bottom: 0.75rem; color: var(--muted); }
+    ul { padding-left: 1.25rem; }
+    li { margin-bottom: 0.35rem; }
+
+    .diagram-box {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.5rem;
+      margin: 1rem 0;
+      overflow-x: auto;
+    }
+
+    .diagram-box .mermaid {
+      display: flex;
+      justify-content: center;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.85rem;
+      margin: 1rem 0;
+    }
+
+    th, td {
+      text-align: left;
+      padding: 0.6rem 0.75rem;
+      border-bottom: 1px solid var(--border);
+    }
+
+    th {
+      color: var(--muted);
+      font-weight: 600;
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    tr:hover td { background: var(--surface-2); }
+
+    code {
+      font-family: var(--mono);
+      font-size: 0.8em;
+      background: var(--surface-2);
+      padding: 0.15em 0.4em;
+      border-radius: 4px;
+      color: #93c5fd;
+    }
+
+    pre {
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1rem;
+      overflow-x: auto;
+      font-family: var(--mono);
+      font-size: 0.78rem;
+      line-height: 1.5;
+      color: #cbd5e1;
+      margin: 0.75rem 0;
+    }
+
+    .call-tree {
+      list-style: none;
+      padding-left: 0;
+    }
+
+    .call-tree li { list-style: none; margin: 0; padding: 0; }
+
+    .call-tree .node {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.35rem 0;
+      cursor: pointer;
+      user-select: none;
+      color: var(--text);
+      font-family: var(--mono);
+      font-size: 0.8rem;
+    }
+
+    .call-tree .node:hover { color: var(--accent); }
+
+    .call-tree .toggle {
+      width: 1rem;
+      text-align: center;
+      color: var(--muted);
+      flex-shrink: 0;
+    }
+
+    .call-tree .children {
+      padding-left: 1.25rem;
+      border-left: 1px dashed var(--border);
+      margin-left: 0.5rem;
+    }
+
+    .call-tree .children.collapsed { display: none; }
+
+    details {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      margin-bottom: 0.5rem;
+    }
+
+    details summary {
+      padding: 0.85rem 1rem;
+      cursor: pointer;
+      font-weight: 600;
+      font-size: 0.9rem;
+      list-style: none;
+    }
+
+    details summary::-webkit-details-marker { display: none; }
+    details summary::before { content: "▸ "; color: var(--muted); }
+    details[open] summary::before { content: "▾ "; }
+
+    details .inner {
+      padding: 0 1rem 1rem;
+      border-top: 1px solid var(--border);
+    }
+
+    .meta-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 0.75rem;
+      margin: 1rem 0;
+    }
+
+    .meta-item {
+      background: var(--surface-2);
+      border-radius: 8px;
+      padding: 0.75rem;
+      font-size: 0.8rem;
+    }
+
+    .meta-item strong {
+      display: block;
+      color: var(--text);
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 0.25rem;
+    }
+
+    .warn-box {
+      background: rgba(234, 179, 8, 0.1);
+      border: 1px solid rgba(234, 179, 8, 0.35);
+      border-radius: var(--radius);
+      padding: 1rem 1.25rem;
+      margin: 1rem 0;
+      font-size: 0.9rem;
+      color: var(--muted);
+    }
+
+    .warn-box strong { color: #fde047; }
+
+    .file-tree {
+      font-family: var(--mono);
+      font-size: 0.78rem;
+      line-height: 1.7;
+      color: var(--muted);
+    }
+
+    .file-tree .dir { color: #fbbf24; }
+    .file-tree .file { color: #86efac; }
+
+    .module-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-left: 3px solid var(--normalize);
+      border-radius: var(--radius);
+      padding: 1rem 1.25rem;
+      margin-bottom: 0.75rem;
+    }
+
+    .module-card h5 {
+      font-size: 0.95rem;
+      margin-bottom: 0.35rem;
+      color: #d8b4fe;
+    }
+
+    .module-card p {
+      font-size: 0.85rem;
+      margin: 0;
+    }
+
+    .step-num {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 1.5rem;
+      height: 1.5rem;
+      border-radius: 50%;
+      background: var(--normalize);
+      color: #fff;
+      font-size: 0.75rem;
+      font-weight: 700;
+      margin-right: 0.5rem;
+    }
+
+    .example-table td:first-child {
+      font-family: var(--mono);
+      font-size: 0.8rem;
+      color: #86efac;
+    }
+
+    footer {
+      margin-top: 3rem;
+      padding-top: 1.5rem;
+      border-top: 1px solid var(--border);
+      font-size: 0.8rem;
+      color: var(--muted);
+    }
+
+    footer a { color: var(--accent); }
+  </style>
+</head>
+<body>
+  <div class="layout">
+    <nav class="sidebar" aria-label="Table of contents">
+      <div class="brand">
+        <h1>Normalize Guide</h1>
+        <p>Stage 3–4 · <code>ingestion/normalize/</code></p>
+      </div>
+      <div class="group-label">Overview</div>
+      <a href="#overview">Introduction</a>
+      <a href="#position">Pipeline position</a>
+      <a href="#modules">Module map</a>
+      <div class="group-label">run_normalization</div>
+      <a href="#orchestration">Full walkthrough</a>
+      <a href="#inputs">Inputs &amp; config</a>
+      <a href="#batching">build_batches</a>
+      <a href="#llm-layer">LLM layer</a>
+      <a href="#prompts">Prompts &amp; schema</a>
+      <a href="#batch-loop">Per-batch loop</a>
+      <a href="#validate">Validation &amp; QC</a>
+      <a href="#outputs">Outputs &amp; reports</a>
+      <div class="group-label">build_outline</div>
+      <a href="#outline-intro">What it returns</a>
+      <a href="#outline-title">Book title</a>
+      <a href="#outline-parse">Parse TOC pages</a>
+      <a href="#outline-kind">entry_kind</a>
+      <a href="#outline-numbers">unit_no / lesson_no</a>
+      <a href="#outline-render">render_outline_context</a>
+      <a href="#outline-limits">Outline limitations</a>
+      <div class="group-label">Reference</div>
+      <a href="#models">Data models</a>
+      <a href="#artifacts">Artifacts</a>
+      <a href="#calls">Call graphs</a>
+      <div class="group-label">Related</div>
+      <a href="pipeline-guide.html">Full pipeline guide</a>
+    </nav>
+
+    <main>
+      <header class="hero" id="overview">
+        <h2>Stage 3 — <code>run_normalization</code></h2>
+        <p>
+          Complete guide to <code>normalize/pipeline.py</code> and every module it calls:
+          loading the extract report, <code>build_outline</code>, <code>build_batches</code>,
+          LLM prompts, validation, and writing normalized sections plus QC reports.
+        </p>
+        <div class="hero-tags">
+          <span class="tag purple">run_normalization</span>
+          <span class="tag">build_batches</span>
+          <span class="tag">validate.py</span>
+          <span class="tag">LLM + schema</span>
+        </div>
+      </header>
+
+      <div class="search-wrap">
+        <input type="search" id="search" placeholder="Search run_normalization, build_batches, validate…" aria-label="Search documentation" />
+      </div>
+
+      <section id="position">
+        <h3>Pipeline position</h3>
+        <p>
+          The ingestion runner (<code>ingestion/runner.py</code>) runs four stages. Normalize is stage 3;
+          readable export is stage 4 and lives in the same package.
+        </p>
+        <div class="diagram-box">
+          <pre class="mermaid">
+flowchart LR
+  subgraph stage2 [Stage 2 — Extract]
+    ER[extract_report.json]
+    RM[raw_markdown pages]
+  end
+  subgraph stage3 [Stage 3 — Normalize]
+    TOC[toc.build_outline]
+    BAT[batching.build_batches]
+    LLM1[llm.normalize_batch_markdown]
+    VAL[validate.py]
+    SEC[sections/p###_###.md]
+  end
+  subgraph stage4 [Stage 4 — Readable]
+    STRIP[reader_export]
+    LLM2[readable_postprocess]
+    READ[readable/document.md]
+  end
+  ER --> TOC
+  ER --> BAT
+  TOC --> BAT
+  BAT --> LLM1
+  LLM1 --> VAL
+  VAL --> SEC
+  SEC --> STRIP
+  STRIP --> LLM2
+  LLM2 --> READ
+
+  style TOC fill:#6b21a8,color:#fff
+  style BAT fill:#6b21a8,color:#fff
+  style LLM1 fill:#6b21a8,color:#fff
+          </pre>
+        </div>
+        <table>
+          <thead><tr><th>Entry point</th><th>File</th><th>Role</th></tr></thead>
+          <tbody>
+            <tr><td><code>run_normalization</code></td><td><code>normalize/pipeline.py</code></td><td>Stage 3 orchestrator</td></tr>
+            <tr><td><code>run_readable_export</code></td><td><code>normalize/readable_pipeline.py</code></td><td>Stage 4 — needs normalized sections on disk</td></tr>
+            <tr><td><code>build_outline</code></td><td><code>normalize/toc.py</code></td><td>TOC → <code>BookOutline</code> (no LLM)</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section id="modules">
+        <h3>How modules contact each other</h3>
+        <p>
+          There is no event bus or plugin registry. <code>pipeline.py</code> orchestrates; helpers take
+          typed dataclasses and return typed results; disk is the handoff to stage 4.
+        </p>
+        <div class="diagram-box">
+          <pre class="mermaid">
+flowchart TB
+  subgraph orch [pipeline.py]
+    RN[run_normalization]
+  end
+  subgraph inputs [Inputs]
+    IO[extract.io.load_extract_report]
+    CFG[IngestionConfig]
+  end
+  subgraph core [Pure helpers]
+    TOC[toc.build_outline]
+    BAT[batching.build_batches]
+    PR[prompts.build_*]
+    SCH[schema.MARKDOWN_SCHEMA_GUIDE]
+    PG[page_guides]
+    VAL[validate.validate_normalized_markdown]
+  end
+  subgraph llm_layer [llm.py]
+    CL[create_normalizer_llm]
+    NB[normalize_batch_markdown]
+  end
+  CFG --> RN
+  IO --> RN
+  RN --> TOC
+  TOC --> BAT
+  BAT --> PR
+  PR --> SCH
+  PR --> PG
+  BAT --> NB
+  CL --> NB
+  NB --> VAL
+  VAL --> DISK[(sections/*.md + reports)]
+  DISK --> RP[readable_pipeline]
+          </pre>
+        </div>
+
+        <div class="module-card">
+          <h5><code>pipeline.py</code></h5>
+          <p>Loads extract report → <code>build_outline</code> → <code>build_batches</code> → loop: prompts, LLM, validate, write files.</p>
+        </div>
+        <div class="module-card">
+          <h5><code>toc.py</code></h5>
+          <p><code>build_outline</code>, <code>_parse_toc_page</code>, <code>render_outline_context</code>. Feeds every batch the same outline text.</p>
+        </div>
+        <div class="module-card">
+          <h5><code>batching.py</code></h5>
+          <p>Groups pages into <code>NormalizeBatch</code> objects; attaches <code>outline_context</code> from <code>render_outline_context</code>.</p>
+        </div>
+        <div class="module-card">
+          <h5><code>prompts.py</code> + <code>schema.py</code> + <code>page_guides.py</code></h5>
+          <p>Build LLM system/user messages: schema rules, fidelity by page type, raw markdown, outline.</p>
+        </div>
+        <div class="module-card">
+          <h5><code>llm.py</code></h5>
+          <p>Provider mapping, <code>create_llm</code> from <code>ai.llms.factory</code>, invoke + strip code fences.</p>
+        </div>
+        <div class="module-card">
+          <h5><code>validate.py</code></h5>
+          <p>Frontmatter checks; optional similarity vs PyMuPDF reference from preprocess backends.</p>
+        </div>
+        <div class="module-card">
+          <h5><code>readable_pipeline.py</code></h5>
+          <p>Reads normalized sections; reloads outline from <code>normalize_report.json</code>; second LLM pass optional.</p>
+        </div>
+      </section>
+
+      <section id="orchestration">
+        <h3><code>run_normalization</code> — full walkthrough</h3>
+        <p>Maps line-by-line to <code>pipeline.py</code>. See linked sections for each helper.</p>
+        <table>
+          <thead><tr><th>Step</th><th>Code</th><th>Section</th></tr></thead>
+          <tbody>
+            <tr><td>1–2</td><td>Check extract report; <code>ensure_normalized_dirs()</code></td><td><a href="#inputs">Inputs</a></td></tr>
+            <tr><td>3–4</td><td><code>load_extract_report</code>; filter <code>max_pages</code></td><td><a href="#inputs">Inputs</a></td></tr>
+            <tr><td>5</td><td><code>build_outline(pages)</code></td><td><a href="#outline-intro">build_outline</a></td></tr>
+            <tr><td>6</td><td><code>build_batches(pages, outline, batch_size)</code></td><td><a href="#batching">build_batches</a></td></tr>
+            <tr><td>7–8</td><td>Dry-run decision; <code>create_normalizer_llm</code></td><td><a href="#llm-layer">LLM</a></td></tr>
+            <tr><td>9</td><td>Loop batches: prompt, generate, validate, write</td><td><a href="#batch-loop">Per-batch loop</a></td></tr>
+            <tr><td>10</td><td><code>document.md</code>, QC + normalize reports</td><td><a href="#outputs">Outputs</a></td></tr>
+          </tbody>
+        </table>
+        <div class="diagram-box">
+          <pre class="mermaid">
+flowchart TD
+  A[load_extract_report] --> B[build_outline]
+  B --> C[build_batches]
+  C --> D{dry_run or no API key?}
+  D -->|no| E[normalize_batch_markdown]
+  D -->|yes| F[_dry_run_markdown]
+  E --> G[validate_normalized_markdown]
+  F --> G
+  G --> H[write section + QC entry]
+          </pre>
+        </div>
+      </section>
+
+      <section id="inputs">
+        <h3>Inputs &amp; configuration</h3>
+        <h4><code>load_extract_report</code> (<code>extract/io.py</code>)</h4>
+        <p>Reads <code>extract_report.json</code>. Each page is <code>RawPageMarkdown</code>: <code>page_number</code>, <code>page_type</code>, <code>blocks</code>, and pre-rendered <code>markdown</code> (stage-2 body sent to the LLM).</p>
+        <h4><code>IngestionConfig</code> (normalize)</h4>
+        <table>
+          <thead><tr><th>Field</th><th>Role</th></tr></thead>
+          <tbody>
+            <tr><td><code>extract_report_path</code></td><td>Required input from stage 2</td></tr>
+            <tr><td><code>output_dir</code></td><td><code>preprocess/backends/pymupdf/page_NNN.txt</code> for QC</td></tr>
+            <tr><td><code>normalized_sections_dir</code></td><td>Output <code>pNNN_MMM.md</code> files</td></tr>
+            <tr><td><code>max_pages</code></td><td>Filter after load</td></tr>
+            <tr><td><code>normalize_batch_size</code></td><td>Default 2 (see batching)</td></tr>
+            <tr><td><code>normalize_dry_run</code></td><td>Skip LLM; placeholders only</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section id="batching">
+        <h3><code>build_batches</code> — grouping pages for the LLM</h3>
+        <p>Source: <code>batching.py</code>. Called after <code>build_outline</code>. Returns <code>list[NormalizeBatch]</code>.</p>
+        <h4>Each <code>NormalizeBatch</code></h4>
+        <table>
+          <thead><tr><th>Field</th><th>Source</th></tr></thead>
+          <tbody>
+            <tr><td><code>batch_id</code></td><td><code>p{page_start:03d}_{page_end:03d}</code></td></tr>
+            <tr><td><code>page_types</code></td><td>Types of pages in the group</td></tr>
+            <tr><td><code>raw_markdown</code></td><td><code>"\n\n".join(page.markdown)</code></td></tr>
+            <tr><td><code>outline_context</code></td><td><code>render_outline_context(outline)</code> — same for all batches</td></tr>
+          </tbody>
+        </table>
+        <h4><code>_batch_key(page)</code></h4>
+        <pre>cover, legal, preface, toc, unknown  →  (page_type, None, None)
+lesson, unit_opener, inquiry, …       →  (page_type, page_number, page_number)</pre>
+        <div class="warn-box">
+          <strong>Batch size in practice:</strong> Lesson pages include <code>page_number</code> in the key, so page 10 and 11 never share a key — each lesson is usually its own batch. <code>normalize_batch_size=2</code> mainly merges consecutive <code>unknown</code> pages. Cover, legal, preface, and toc are always one page per batch (forced flush).
+        </div>
+        <h4>Algorithm</h4>
+        <ol style="color: var(--muted); padding-left: 1.25rem;">
+          <li>Sort pages by <code>page_number</code>.</li>
+          <li>For <code>cover|legal|preface|toc</code>: flush, add single page, flush.</li>
+          <li>Else: append if same <code>_batch_key</code> and <code>len(current) &lt; batch_size</code>; otherwise flush and start new group.</li>
+        </ol>
+        <div class="diagram-box">
+          <pre class="mermaid">
+flowchart TD
+  P[pages sorted] --> T{front matter type?}
+  T -->|yes| S[single-page batch]
+  T -->|no| M{same key and room in batch?}
+  M -->|yes| A[append]
+  M -->|no| F[flush + new group]
+          </pre>
+        </div>
+      </section>
+
+      <section id="llm-layer">
+        <h3>LLM layer (<code>llm.py</code>)</h3>
+        <table>
+          <thead><tr><th>Function</th><th>Role</th></tr></thead>
+          <tbody>
+            <tr><td><code>provider_from_name</code></td><td>Maps <code>gemini</code>, <code>gpt</code>, <code>claude</code>, etc. to <code>LLMProvider</code></td></tr>
+            <tr><td><code>provider_is_configured</code></td><td>Checks API env vars; missing key → auto dry-run</td></tr>
+            <tr><td><code>create_normalizer_llm</code></td><td><code>create_llm(provider, model, temperature=0.0)</code></td></tr>
+            <tr><td><code>normalize_batch_markdown</code></td><td><code>SystemMessage</code> + <code>HumanMessage</code>; strip ``` fences</td></tr>
+          </tbody>
+        </table>
+        <table>
+          <thead><tr><th>Provider</th><th>Environment</th></tr></thead>
+          <tbody>
+            <tr><td>gemini</td><td><code>GOOGLE_API_KEY</code> or <code>GEMINI_API_KEY</code></td></tr>
+            <tr><td>gpt</td><td><code>OPENAI_API_KEY</code></td></tr>
+            <tr><td>claude</td><td><code>ANTHROPIC_API_KEY</code></td></tr>
+            <tr><td>ollama</td><td>Always treated as configured (local)</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section id="prompts">
+        <h3>Prompts, schema &amp; page guides</h3>
+        <h4>System (<code>build_system_prompt</code>)</h4>
+        <p>Normalize to schema-compliant Markdown; never invent content; preserve TOC behavior on TOC pages.</p>
+        <h4>User (<code>build_user_prompt</code>) — sections in order</h4>
+        <ol style="color: var(--muted); padding-left: 1.25rem;">
+          <li><code>MARKDOWN_SCHEMA_GUIDE</code> (<code>schema.py</code>) — chunks, frontmatter, figures, footnotes</li>
+          <li><code>guidance_for_page_types(batch.page_types)</code> (<code>page_guides.py</code>)</li>
+          <li>Book outline: <code>batch.outline_context</code></li>
+          <li>Page range and observed types</li>
+          <li>Raw stage-2 markdown: <code>batch.raw_markdown</code></li>
+        </ol>
+        <h4>Page guides</h4>
+        <p>Always <code>FIDELITY_RULES</code> (no invention). Per type: <code>COVER_GUIDE</code>, <code>LEGAL_GUIDE</code>, <code>PREFACE_GUIDE</code>, <code>TOC_GUIDE</code>, or <code>GENERAL_GUIDE</code> for lesson/inquiry/unknown.</p>
+        <h4>Required frontmatter</h4>
+        <pre>book_title, grade, semester, subject, unit_no, unit_title,
+lesson_no, lesson_title, content_kind, page_start, page_end,
+heading_path, chunk_id</pre>
+        <details>
+          <summary>Schema output rules (summary)</summary>
+          <div class="inner">
+            <ul>
+              <li>Multiple chunks per page when source has clear blocks</li>
+              <li><code>::: figure</code> blocks; <code>&lt;!-- page_break: N --&gt;</code></li>
+              <li><code>content_kind=key_terms</code> for bilingual lines: Arabic | English</li>
+              <li>Stable <code>chunk_id</code> e.g. <code>u1-l1-body-p10</code></li>
+            </ul>
+          </div>
+        </details>
+      </section>
+
+      <section id="batch-loop">
+        <h3>Per-batch loop (<code>pipeline.py</code>)</h3>
+        <p>For each <code>batch</code> in <code>batches</code>:</p>
+        <table>
+          <thead><tr><th>#</th><th>Action</th><th>Output</th></tr></thead>
+          <tbody>
+            <tr><td>1</td><td>Write prompt (always)</td><td><code>sections/{batch_id}.prompt.md</code></td></tr>
+            <tr><td>2</td><td>LLM or dry-run</td><td><code>normalize_batch_markdown</code> or <code>_dry_run_markdown</code></td></tr>
+            <tr><td>3</td><td>Load PyMuPDF reference per page</td><td><code>load_reference_text(output_dir, n)</code></td></tr>
+            <tr><td>4</td><td>Validate</td><td><code>ValidationResult</code> on <code>NormalizedSection</code></td></tr>
+            <tr><td>5</td><td>Write section</td><td><code>sections/{batch_id}.md</code> + append to document</td></tr>
+          </tbody>
+        </table>
+        <h4>Dry-run placeholder (<code>_dry_run_markdown</code>)</h4>
+        <p>Minimal YAML frontmatter with <code>content_kind: front_matter</code> and HTML comment <code>normalization_pending: dry_run</code>. Prompt files are still written for inspection.</p>
+      </section>
+
+      <section id="validate">
+        <h3>Validation &amp; QC (<code>validate.py</code>)</h3>
+        <p>Non-blocking: errors/warnings stored in <code>qc_report.json</code>; files are always written.</p>
+        <table>
+          <thead><tr><th>Category</th><th>What is checked</th></tr></thead>
+          <tbody>
+            <tr><td>Errors</td><td>No <code>---</code> YAML blocks; missing required fields; invalid <code>content_kind</code></td></tr>
+            <tr><td>Warnings</td><td>Headings not #/##/###; <code>vision_ocr_pending</code>; footnotes without defs</td></tr>
+            <tr><td>Metrics</td><td><code>frontmatter_block_count</code>, <code>figure_block_count</code>, <code>page_break_comment_count</code></td></tr>
+            <tr><td>Reference</td><td><code>reference_similarity</code> and <code>approx_cer</code> vs PyMuPDF plain text</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section id="outputs">
+        <h3>Outputs &amp; reports</h3>
+        <table>
+          <thead><tr><th>File</th><th>Description</th></tr></thead>
+          <tbody>
+            <tr><td><code>sections/*.md</code></td><td>One normalized file per batch</td></tr>
+            <tr><td><code>sections/*.prompt.md</code></td><td>Full prompts for debugging</td></tr>
+            <tr><td><code>document.md</code></td><td>All sections joined</td></tr>
+            <tr><td><code>qc_report.json</code></td><td>Validation per section + provider info</td></tr>
+            <tr><td><code>normalize_report.json</code></td><td>Full <code>NormalizeReport</code> including <code>outline</code></td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section id="outline-intro">
+        <h3><code>build_outline</code> — what it returns</h3>
+        <p>
+          Source: <code>src/pipeline/ingestion/normalize/toc.py</code>.
+          Input: <code>list[RawPageMarkdown]</code> from the extract report.
+          Output: <code>BookOutline</code> with book metadata and a flat <code>entries: list[TocEntry]</code>.
+        </p>
+        <div class="meta-grid">
+          <div class="meta-item"><strong>book_title</strong>From cover page 1 (or default)</div>
+          <div class="meta-item"><strong>grade / semester</strong>Hardcoded 8 and 1 today</div>
+          <div class="meta-item"><strong>entries</strong>One row per TOC line (printed page → title)</div>
+        </div>
+        <pre>def build_outline(pages: list[RawPageMarkdown]) -> BookOutline:
+    # 1. book_title from page 1
+    # 2. entries from all pages where page_type == "toc"
+    # 3. assign unit_no / lesson_no on unit & lesson kinds only
+    return BookOutline(...)</pre>
+      </section>
+
+      <section id="outline-title">
+        <h3>Step 1 — Book title from cover</h3>
+        <p><code>_book_title_from_cover</code> scans layout <code>blocks[].lines</code> on page 1 (not the rendered markdown string).</p>
+        <pre>if "العلوم" in line:  return "العلوم"
+return "علوم"           # default</pre>
+        <div class="warn-box">
+          <strong>OCR / kashida caveat:</strong> Cover text like <code>العـلــوم</code> often does <em>not</em> contain the plain substring
+          <code>العلوم</code>, so reports may show <code>book_title: علوم</code> even when the printed title is “العلوم”.
+        </div>
+      </section>
+
+      <section id="outline-parse">
+        <h3>Step 2 — Parse TOC pages</h3>
+        <p>
+          Only pages with <code>page_type == "toc"</code> (from preprocess <code>classify_page</code>, usually pages 3–4) are parsed.
+          <code>_parse_toc_page</code> walks every line in every block in order.
+        </p>
+
+        <h4>Line state machine</h4>
+        <table class="example-table">
+          <thead><tr><th>Line pattern</th><th>Action</th></tr></thead>
+          <tbody>
+            <tr><td><code>^\d{1,3}$</code> only (e.g. <code>5</code>, <code>10</code>)</td><td>Flush previous entry; set <code>pending_page</code></td></tr>
+            <tr><td>Any other line while page pending</td><td>Append to title lines for that entry</td></tr>
+            <tr><td>End of page</td><td>Flush last pending entry</td></tr>
+          </tbody>
+        </table>
+
+        <h4>Example from extract report (page 3)</h4>
+        <pre>Block lines (simplified):
+  "5"     →  start entry, page_number = 5
+  "المقدّمة"  →  title for page 5
+  "6"     →  flush page 5; start page 6
+  "): الوراثة والتكاثر1( الوحدة"  →  title for page 6
+  "10"    →  flush page 6; start page 10
+  "): المادة الوراثية1( الدرس"   →  title for page 10</pre>
+        <p>Title text is <code>_infer_title</code>: non-empty stripped lines joined with a single space.</p>
+
+        <div class="diagram-box">
+          <pre class="mermaid">
+stateDiagram-v2
+  [*] --> Idle
+  Idle --> Pending: digit-only line
+  Pending --> Pending: title line
+  Pending --> Idle: flush on next digit or EOF
+  note right of Pending: TocEntry(page, title, entry_kind)
+          </pre>
+        </div>
+      </section>
+
+      <section id="outline-kind">
+        <h3>Step 3 — Classify <code>entry_kind</code></h3>
+        <p><code>_infer_entry_kind(title)</code> uses Arabic keyword regexes. <strong>First match wins</strong> (order matters).</p>
+        <table>
+          <thead><tr><th>Order</th><th>Regex / keyword</th><th>entry_kind</th></tr></thead>
+          <tbody>
+            <tr><td>1</td><td>الوحدة</td><td><code>unit</code></td></tr>
+            <tr><td>2</td><td>الدرس</td><td><code>lesson</code></td></tr>
+            <tr><td>3</td><td>الإثراء · التوسع</td><td><code>enrichment</code></td></tr>
+            <tr><td>4</td><td>استقصاء · استكشاف</td><td><code>inquiry</code></td></tr>
+            <tr><td>5</td><td>مراجعة</td><td><code>review</code></td></tr>
+            <tr><td>6</td><td>المقدمة</td><td><code>preface</code></td></tr>
+            <tr><td>—</td><td>no match</td><td><code>unknown</code></td></tr>
+          </tbody>
+        </table>
+        <div class="warn-box">
+          <strong>Ordering trap:</strong> <code>مراجعةُ الوحدة</code> matches <code>الوحدة</code> before <code>مراجعة</code>, so it becomes
+          <code>entry_kind: unit</code> in <code>normalize_report.json</code>, not <code>review</code>.
+          OCR-broken preface titles may stay <code>unknown</code> if <code>المقدمة</code> does not appear in the string.
+        </div>
+      </section>
+
+      <section id="outline-numbers">
+        <h3>Step 4 — Assign <code>unit_no</code> and <code>lesson_no</code></h3>
+        <p>A second pass walks <code>entries</code> in list order (TOC page order in the extract report, then line order).</p>
+        <table>
+          <thead><tr><th>entry_kind</th><th>unit_no</th><th>lesson_no</th></tr></thead>
+          <tbody>
+            <tr><td><code>unit</code></td><td>Increment global counter; reset lesson counter</td><td>—</td></tr>
+            <tr><td><code>lesson</code></td><td>Current unit (or <code>null</code> if no unit yet)</td><td>Increment within current unit</td></tr>
+            <tr><td>other</td><td><code>null</code></td><td><code>null</code></td></tr>
+          </tbody>
+        </table>
+        <p>
+          Numbers in parentheses in the printed TOC (e.g. <code>الوحدة (1)</code>) are <em>not</em> parsed — only positional counting in the outline list.
+        </p>
+        <h4>Sample rows (from a real run)</h4>
+        <table>
+          <thead><tr><th>page</th><th>kind</th><th>unit</th><th>lesson</th><th>title (truncated)</th></tr></thead>
+          <tbody>
+            <tr><td>5</td><td>unknown</td><td>—</td><td>—</td><td>المقدّمة</td></tr>
+            <tr><td>6</td><td>unit</td><td>1</td><td>—</td><td>الوراثة والتكاثر … الوحدة</td></tr>
+            <tr><td>10</td><td>lesson</td><td>1</td><td>1</td><td>المادة الوراثية … الدرس</td></tr>
+            <tr><td>19</td><td>lesson</td><td>1</td><td>2</td><td>التكاثر … الدرس</td></tr>
+            <tr><td>36</td><td>inquiry</td><td>—</td><td>—</td><td>استقصاء …</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section id="outline-render">
+        <h3>Step 5 — <code>render_outline_context</code></h3>
+        <p>
+          Converts <code>BookOutline</code> to plain text embedded in every <code>NormalizeBatch</code> and LLM user prompt:
+        </p>
+        <pre>book_title: علوم
+grade: 8
+semester: 1
+
+TOC outline:
+- page 6: unit=1 lesson=None kind=unit title=...
+- page 10: unit=1 lesson=1 kind=lesson title=...</pre>
+        <p>
+          The normalization LLM uses this to fill YAML frontmatter (<code>unit_no</code>, <code>lesson_title</code>,
+          <code>content_kind</code>, etc.) consistently across batches.
+        </p>
+        <p>
+          <code>BookOutline.entry_for_page(n)</code> in <code>models.py</code> returns the last entry with
+          <code>page_number &lt;= n</code> — useful for lookup, but <code>build_outline</code> itself only produces the list;
+          the main path uses the rendered text.
+        </p>
+      </section>
+
+      <section id="outline-limits">
+        <h3><code>build_outline</code> — limitations</h3>
+        <ul>
+          <li>Depends on extract <strong>block line order</strong> — if page number and title are swapped in blocks, entries break.</li>
+          <li>Only processes <code>page_type == "toc"</code> — misclassified TOC pages are skipped entirely.</li>
+          <li><code>grade</code> and <code>semester</code> are hardcoded, not read from the PDF.</li>
+          <li>Keyword classification is brittle under OCR (tatweel, broken المقدمة, الوحدة vs مراجعة order).</li>
+          <li><code>build_outline</code> does not sort <code>pages</code> by <code>page_number</code> — order follows the extract report array.</li>
+        </ul>
+      </section>
+
+      <section id="models">
+        <h3>Data models</h3>
+        <table>
+          <thead><tr><th>Class</th><th>Fields / role</th></tr></thead>
+          <tbody>
+            <tr><td><code>TocEntry</code></td><td><code>page_number</code>, <code>title</code>, <code>unit_no</code>, <code>lesson_no</code>, <code>entry_kind</code></td></tr>
+            <tr><td><code>BookOutline</code></td><td><code>book_title</code>, <code>grade</code>, <code>semester</code>, <code>entries</code>; <code>entry_for_page(n)</code></td></tr>
+            <tr><td><code>NormalizeBatch</code></td><td><code>batch_id</code>, pages, <code>raw_markdown</code>, <code>outline_context</code></td></tr>
+            <tr><td><code>ValidationResult</code></td><td><code>ok</code>, <code>errors</code>, <code>warnings</code>, <code>metrics</code></td></tr>
+            <tr><td><code>NormalizedSection</code></td><td>Per-batch output + validation + <code>prompt_path</code></td></tr>
+            <tr><td><code>NormalizeReport</code></td><td>Full stage-3 JSON including embedded <code>outline</code></td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section id="artifacts">
+        <h3>Artifacts on disk</h3>
+        <pre class="file-tree"><span class="dir">assets/normalized/</span>
+├── normalize_report.json    <span class="file">← includes outline.entries</span>
+├── qc_report.json
+├── document.md
+├── <span class="dir">sections/</span>
+│   ├── p001_001.md
+│   ├── p001_001.prompt.md
+│   └── ...
+└── <span class="dir">readable/</span>
+    ├── document.md
+    └── <span class="dir">sections/</span>p*.md</pre>
+        <p>Upstream: <code>assets/raw_markdown/extract_report.json</code> (pages + blocks). QC reference: <code>assets/preprocess/backends/pymupdf/page_NNN.txt</code>.</p>
+      </section>
+
+      <section id="calls">
+        <h3>Call graph — <code>build_outline</code></h3>
+        <details open>
+          <summary><code>build_outline(pages)</code></summary>
+          <div class="inner">
+            <ul class="call-tree" id="tree-outline"></ul>
+          </div>
+        </details>
+        <details>
+          <summary><code>build_batches</code></summary>
+          <div class="inner">
+            <ul class="call-tree" id="tree-batching"></ul>
+          </div>
+        </details>
+        <details>
+          <summary><code>run_normalization</code> (full stage 3)</summary>
+          <div class="inner">
+            <ul class="call-tree" id="tree-normalize"></ul>
+          </div>
+        </details>
+      </section>
+
+      <footer>
+        <p>Normalize Guide — <code>src/pipeline/ingestion/normalize/</code>. Open in any browser; diagrams use Mermaid.js from CDN.</p>
+        <p style="margin-top:0.5rem">See also: <a href="pipeline-guide.html">Full pipeline guide</a> · Source: <code>docs/normalize-guide.html</code></p>
+      </footer>
+    </main>
+  </div>
+
+  <script>
+    mermaid.initialize({
+      startOnLoad: true,
+      theme: "dark",
+      themeVariables: {
+        primaryColor: "#a855f7",
+        primaryTextColor: "#e7ecf3",
+        primaryBorderColor: "#2d3a4f",
+        lineColor: "#8b9cb3",
+        secondaryColor: "#1a2332",
+        tertiaryColor: "#243044",
+        background: "#1a2332",
+        mainBkg: "#1a2332",
+        nodeBorder: "#2d3a4f",
+        clusterBkg: "#243044",
+        titleColor: "#e7ecf3",
+        edgeLabelBackground: "#1a2332",
+      },
+      flowchart: { curve: "basis", padding: 16 },
+    });
+
+    const navLinks = document.querySelectorAll("nav.sidebar a[href^='#']");
+    const sections = [...navLinks].map((a) => document.querySelector(a.getAttribute("href"))).filter(Boolean);
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            navLinks.forEach((link) => {
+              link.classList.toggle("active", link.getAttribute("href") === "#" + entry.target.id);
+            });
+          }
+        });
+      },
+      { rootMargin: "-20% 0px -70% 0px", threshold: 0 }
+    );
+    sections.forEach((s) => observer.observe(s));
+
+    const searchInput = document.getElementById("search");
+    const searchable = document.querySelectorAll("section, details, table tr");
+    searchInput.addEventListener("input", () => {
+      const q = searchInput.value.trim().toLowerCase();
+      if (!q) {
+        searchable.forEach((el) => { if (el.tagName === "TR") el.style.display = ""; else el.style.display = ""; });
+        return;
+      }
+      searchable.forEach((el) => {
+        const match = el.textContent.toLowerCase().includes(q);
+        if (el.tagName === "TR") el.style.display = match ? "" : "none";
+        else if (el.tagName === "SECTION" || el.tagName === "DETAILS") el.style.display = match ? "" : "none";
+      });
+    });
+
+    function buildTree(containerId, nodes) {
+      const ul = document.getElementById(containerId);
+      if (!ul) return;
+      function renderNode(node) {
+        const li = document.createElement("li");
+        const hasChildren = node.children && node.children.length;
+        const row = document.createElement("div");
+        row.className = "node";
+        row.innerHTML = `<span class="toggle">${hasChildren ? "▾" : "·"}</span><span>${node.name}</span>`;
+        li.appendChild(row);
+        if (hasChildren) {
+          const childUl = document.createElement("ul");
+          childUl.className = "children";
+          node.children.forEach((child) => childUl.appendChild(renderNode(child)));
+          li.appendChild(childUl);
+          row.addEventListener("click", () => {
+            const collapsed = childUl.classList.toggle("collapsed");
+            row.querySelector(".toggle").textContent = collapsed ? "▸" : "▾";
+          });
+        }
+        return li;
+      }
+      nodes.forEach((n) => ul.appendChild(renderNode(n)));
+    }
+
+    buildTree("tree-outline", [
+      {
+        name: "build_outline(pages)",
+        children: [
+          { name: "by_page = {page_number: page}" },
+          { name: "_book_title_from_cover(by_page.get(1))" },
+          {
+            name: "for page in pages if page_type == 'toc'",
+            children: [
+              {
+                name: "_parse_toc_page(page)",
+                children: [
+                  { name: "scan block.lines" },
+                  { name: "PAGE_ONLY_RE → pending_page" },
+                  { name: "else → pending_lines" },
+                  { name: "flush → TocEntry + _infer_entry_kind" },
+                ],
+              },
+            ],
+          },
+          {
+            name: "numbering pass on entries",
+            children: [
+              { name: "unit → unit_no++, lesson_no = 0" },
+              { name: "lesson → lesson_no++, unit_no = current" },
+            ],
+          },
+          { name: "return BookOutline" },
+        ],
+      },
+    ]);
+
+    buildTree("tree-batching", [
+      {
+        name: "build_batches(pages, outline, batch_size)",
+        children: [
+          { name: "sort pages by page_number" },
+          { name: "outline_context = render_outline_context(outline)" },
+          {
+            name: "for each page",
+            children: [
+              { name: "front matter? → single-page batch" },
+              { name: "_batch_key(page) compare with current" },
+              { name: "flush() → NormalizeBatch(batch_id, raw_markdown, ...)" },
+            ],
+          },
+        ],
+      },
+    ]);
+
+    buildTree("tree-normalize", [
+      {
+        name: "run_normalization(config, provider, model, dry_run)",
+        children: [
+          { name: "load_extract_report" },
+          { name: "build_outline(pages)" },
+          { name: "build_batches(pages, outline)" },
+          { name: "create_normalizer_llm" },
+          {
+            name: "loop: each batch",
+            children: [
+              { name: "build_system_prompt + build_user_prompt" },
+              { name: "normalize_batch_markdown | _dry_run_markdown" },
+              { name: "load_reference_text (pymupdf)" },
+              { name: "validate_normalized_markdown" },
+              { name: "write sections + reports" },
+            ],
+          },
+        ],
+      },
+    ]);
+  </script>
+</body>
+</html>
