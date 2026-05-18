@@ -86,7 +86,9 @@ LMS/
 │   │   ├── run_extract.py
 │   │   ├── run_normalize.py
 │   │   ├── run_export_readable.py
+│   │   ├── run_test_retrieval.py # Hybrid retrieval smoke test (BM25 + embeddings)
 │   │   └── ingestion/            # Stage implementations and orchestrator
+│   │       └── retrieval/        # Chunk loading, embeddings, hybrid search
 │   ├── agents/
 │   └── ai/
 ├── frontend/
@@ -102,12 +104,12 @@ The ingestion flow turns a textbook PDF into structured Markdown for later LMS a
 
 ### Pipeline stages
 
-| Stage | Purpose | Main outputs |
-| ----- | ------- | ------------ |
-| `preprocess` | Profile pages, compare text-layer backends, classify page type | `src/pipeline/assets/preprocess/` |
-| `extract` | Hybrid text-layer extraction to raw Markdown | `src/pipeline/assets/raw_markdown/` |
-| `normalize` | Schema-first LLM cleanup and chunk metadata | `src/pipeline/assets/normalized/` |
-| `readable` | Body-only Markdown without per-chunk YAML frontmatter | `src/pipeline/assets/normalized/readable/` |
+| Stage        | Purpose                                                        | Main outputs                               |
+| ------------ | -------------------------------------------------------------- | ------------------------------------------ |
+| `preprocess` | Profile pages, compare text-layer backends, classify page type | `src/pipeline/assets/preprocess/`          |
+| `extract`    | Hybrid text-layer extraction to raw Markdown                   | `src/pipeline/assets/raw_markdown/`        |
+| `normalize`  | Schema-first LLM cleanup and chunk metadata                    | `src/pipeline/assets/normalized/`          |
+| `readable`   | Body-only Markdown without per-chunk YAML frontmatter          | `src/pipeline/assets/normalized/readable/` |
 
 Stage order is defined in `src/pipeline/ingestion/runner.py` in `PIPELINE_STAGES`.
 
@@ -166,6 +168,52 @@ uv run python src/pipeline/run_export_readable.py
 
 The readable export removes the YAML frontmatter blocks used for chunking. The normalized section files keep that metadata for downstream ingestion.
 
+### Hybrid retrieval (RAG smoke test)
+
+After normalization, you can search normalized chunks with **hybrid retrieval**: BM25 (sparse) plus dense embeddings (cosine similarity), fused with reciprocal rank fusion (RRF).
+
+Implementation lives in `src/pipeline/ingestion/retrieval/`. Chunks are loaded from `src/pipeline/assets/normalized/sections/p###_###.md` (YAML frontmatter + body per chunk).
+
+| Score (CLI) | Meaning |
+| ----------- | ------- |
+| `rrf` | Fusion score from ranks (small values, e.g. 0.01–0.03, are normal) |
+| `cosine` | Dense similarity between query and chunk embeddings (often ~0.5–0.95) |
+| `bm25` | Sparse lexical score (scale depends on corpus size) |
+
+**Offline / CI** (no API keys; uses deterministic fake embeddings):
+
+```bash
+uv run python src/pipeline/run_test_retrieval.py --embedding-provider fake
+uv run pytest tests/test_retrieval.py -v
+```
+
+**Semantic search with Gemini** (set `GOOGLE_API_KEY` or `GEMINI_API_KEY` in `.env`):
+
+```bash
+uv run python src/pipeline/run_test_retrieval.py \
+  --embedding-provider gemini \
+  --query "المادة الوراثية" \
+  --top-k 5
+```
+
+**OpenAI embeddings:**
+
+```bash
+uv run python src/pipeline/run_test_retrieval.py \
+  --embedding-provider openai \
+  --embedding-model text-embedding-3-small \
+  --query "كيف تتكاثر الكائنات الحية؟"
+```
+
+Useful flags:
+
+- `--sections-dir` — override normalized sections directory
+- `--query` — repeat for multiple queries (defaults to sample Arabic queries)
+- `--json` — machine-readable output with `rrf_score`, `bm25_score`, `cosine_score`
+- `--embedding-model` — override provider default (Gemini default: `models/gemini-embedding-001`)
+
+Embedding providers: `gemini`, `openai` / `gpt`, `ollama`, `fake`.
+
 ### LLM providers for normalization
 
 Stage 3 supports `gemini`, `gpt`, `claude`, `groq`, and `ollama` through `src/ai/llms/factory.py`.
@@ -199,8 +247,10 @@ The orchestrator in `src/pipeline/run_pipeline.py` will pick up the new stage au
 ## 🧪 Testing
 
 ```bash
-pytest tests/ -v
+uv run pytest tests/ -v
 ```
+
+Retrieval tests use fake embeddings by default; `test_load_chunks_from_real_sections` runs when normalized section assets exist locally.
 
 ## 📄 API Documentation
 
